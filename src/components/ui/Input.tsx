@@ -4,6 +4,19 @@ import { cn } from "../../lib/utils"
 export interface InputProps
     extends React.InputHTMLAttributes<HTMLInputElement> { }
 
+/**
+ * Styled text input component.
+ * 
+ * @description
+ * A wrapper around the native HTML input element with consistent 
+ * focus states, rounded corners, and padding to match the app's design system.
+ * 
+ * @param props - Standard HTML input attributes.
+ * @usedBy
+ * - ProfileManager (Add Child)
+ * - ChoreBank (Add Chore form)
+ * - RewardBank (Add Reward form)
+ */
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
     ({ className, type, ...props }, ref) => {
         return (

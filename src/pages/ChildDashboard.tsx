@@ -1,14 +1,25 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useStore } from '../store';
-import { ChildHeader } from '../components/child/ChildHeader';
-import { QuestList } from '../components/child/QuestList';
-import { RewardShop } from '../components/child/RewardShop';
+import { ChildHeader } from '../features/profiles/components/ChildHeader';
+import { QuestList } from '../features/chores/components/QuestList';
+import { RewardShop } from '../features/rewards/components/RewardShop';
 import { Button } from '../components/ui/Button';
 import { ArrowLeft, ListTodo, Gift } from 'lucide-react';
 import { cn } from '../lib/utils';
 import confetti from 'canvas-confetti';
 
+/**
+ * Main Controller for the Child Interface.
+ * 
+ * @description
+ * The primary game view for children. Manages the "Quest List" and "Reward Shop" tabs.
+ * Includes logic for:
+ * - Detecting level-ups and triggering confetti.
+ * - Loading specific child data based on URL params.
+ * 
+ * @route /child/:childId
+ */
 export function ChildDashboard() {
     const { childId } = useParams();
     const navigate = useNavigate();

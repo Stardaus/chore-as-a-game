@@ -1,7 +1,16 @@
-import { useStore } from '../../store';
-import { Button } from '../ui/Button';
+import { useStore } from '../../../store';
+import { Button } from '../../../components/ui/Button';
 import { CheckCircle2, Clock, Check } from 'lucide-react';
 
+/**
+ * Parent verification interface.
+ * 
+ * @description
+ * Lists all chores marked as "Completed" by children that require parent approval.
+ * Allows parents to approve the work, which finalizes the transaction and awards XP.
+ * 
+ * @usedBy ParentDashboard (Approvals tab)
+ */
 export function ApprovalQueue() {
     const { assignments, chores, profiles, approveAssignment } = useStore();
 

@@ -1,15 +1,24 @@
 import { useState } from 'react';
-import { useStore } from '../../store';
-import { Modal } from '../ui/Modal';
-import { Button } from '../ui/Button';
+import { useStore } from '../../../store';
+import { Modal } from '../../../components/ui/Modal';
+import { Button } from '../../../components/ui/Button';
 import { Check } from 'lucide-react';
-import { cn } from '../../lib/utils';
+import { cn } from '../../../lib/utils';
 
 interface BulkAssignModalProps {
     isOpen: boolean;
     onClose: () => void;
 }
 
+/**
+ * Modal for tag-based bulk assignment.
+ * 
+ * @description
+ * Allows parents to assign ALL chores with a specific tag (e.g., "daily", "prayer")
+ * to selected children in one action. Useful for setting up daily routines.
+ * 
+ * @usedBy ChoreBank
+ */
 export function BulkAssignModal({ isOpen, onClose }: BulkAssignModalProps) {
     const { profiles, chores, assignChoresByTag } = useStore();
     const [selectedTag, setSelectedTag] = useState<string>('');

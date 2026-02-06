@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { useStore } from '../../store';
-import { Modal } from '../ui/Modal';
-import { Button } from '../ui/Button';
-import type { Chore } from '../../types';
+import { useStore } from '../../../store';
+import { Modal } from '../../../components/ui/Modal';
+import { Button } from '../../../components/ui/Button';
+import type { Chore } from '../../../types';
 import { Check } from 'lucide-react';
 
 interface AssignChoreModalProps {
@@ -11,6 +11,16 @@ interface AssignChoreModalProps {
     onClose: () => void;
 }
 
+/**
+ * Modal for assigning a specific chore to one or more children.
+ * 
+ * @description
+ * Selecting a chore in the ChoreBank opens this modal. It lists all profiles
+ * and allows multi-selection for assignment.
+ * 
+ * @param chore - The chore template being assigned.
+ * @usedBy ChoreBank
+ */
 export function AssignChoreModal({ chore, isOpen, onClose }: AssignChoreModalProps) {
     const { profiles, assignChore } = useStore();
     const [selectedChildIds, setSelectedChildIds] = useState<string[]>([]);

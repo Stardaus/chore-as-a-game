@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ProfileManager } from '../components/parent/ProfileManager';
-import { ChoreBank } from '../components/parent/ChoreBank';
-import { RewardBank } from '../components/parent/RewardBank';
-import { ApprovalQueue } from '../components/parent/ApprovalQueue';
+import { ProfileManager } from '../features/profiles/components/ProfileManager';
+import { ChoreBank } from '../features/chores/components/ChoreBank';
+import { RewardBank } from '../features/rewards/components/RewardBank';
+import { ApprovalQueue } from '../features/chores/components/ApprovalQueue';
 import { Button } from '../components/ui/Button';
 import { ArrowLeft, Users, ListTodo, Gift, Settings, CheckSquare } from 'lucide-react';
 import { cn } from '../lib/utils';
@@ -11,6 +11,15 @@ import { useStore } from '../store';
 
 type Tab = 'profiles' | 'chores' | 'rewards' | 'approvals';
 
+/**
+ * Main Controller for the Parent Interface.
+ * 
+ * @description
+ * Hosts the management tools (Profiles, Chores, Rewards, Approvals) within a tabbed interface.
+ * Calculates badges for pending actions (like approvals) to alert the parent.
+ * 
+ * @route /parent/*
+ */
 export function ParentDashboard() {
     const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState<Tab>('profiles');

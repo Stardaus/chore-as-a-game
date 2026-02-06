@@ -1,10 +1,22 @@
-import type { Profile } from '../../types';
+import type { Profile } from '../../../types';
 import { Crown, Star, Trophy } from 'lucide-react';
 
 interface ChildHeaderProps {
     profile: Profile;
 }
 
+/**
+ * "Game HUD" Header for the child dashboard.
+ * 
+ * @description
+ * Visualizes the child's gaming progress, including:
+ * - Avatar and Name
+ * - Current Level and XP Progress Bar
+ * - Total Points available for redemption
+ * 
+ * @param profile - The child profile data to display.
+ * @usedBy ChildDashboard (Sticky top header)
+ */
 export function ChildHeader({ profile }: ChildHeaderProps) {
     // Simple level progress calculation (e.g. 100 XP per level)
     const xpForNextLevel = 100;

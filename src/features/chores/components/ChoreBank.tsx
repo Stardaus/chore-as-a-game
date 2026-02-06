@@ -1,13 +1,25 @@
 import { useState } from 'react';
-import { useStore } from '../../store';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/Card';
-import { Button } from '../ui/Button';
-import { Input } from '../ui/Input';
+import { useStore } from '../../../store';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../../components/ui/Card';
+import { Button } from '../../../components/ui/Button';
+import { Input } from '../../../components/ui/Input';
 import { Plus, Clock, Trash2 } from 'lucide-react';
-import type { Frequency, Chore } from '../../types';
+import type { Frequency, Chore } from '../../../types';
 import { AssignChoreModal } from './AssignChoreModal';
 import { BulkAssignModal } from './BulkAssignModal';
 
+/**
+ * Central management interface for Chores.
+ * 
+ * @description
+ * Allows parents to:
+ * - Create new chore templates (frequency, points, tags).
+ * - Assign chores to children (individually or in bulk).
+ * - Archive/Delete chores.
+ * - Seed default chores (e.g., Prayers).
+ * 
+ * @usedBy ParentDashboard (Chores tab)
+ */
 export function ChoreBank() {
     const { chores, addChore, archiveChore, seedDefaultChores } = useStore();
     const [assigningChore, setAssigningChore] = useState<Chore | null>(null);

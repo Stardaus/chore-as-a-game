@@ -38,6 +38,19 @@ export interface ButtonProps
     asChild?: boolean
 }
 
+/**
+ * Reusable Button component with variant support.
+ * 
+ * @description
+ * Uses `class-variance-authority` (cva) to handle visual variants (default, outline, ghost, etc.)
+ * and sizes. Wraps the native HTML button element.
+ * 
+ * @param props - Extends standard button attributes + variant props.
+ * @usedBy
+ * - All forms (Add Chore, Add Profile)
+ * - Navigation elements
+ * - Interactive lists (QuestList items)
+ */
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     ({ className, variant, size, asChild = false, ...props }, ref) => {
         return (

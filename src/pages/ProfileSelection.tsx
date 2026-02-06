@@ -3,6 +3,15 @@ import { useStore } from '../store';
 import { Button } from '../components/ui/Button';
 import { Lock, UserPlus, Crown } from 'lucide-react';
 
+/**
+ * Landing Page / Profile Switcher.
+ * 
+ * @description
+ * The entry point of the application. Displays all available child profiles for quick access.
+ * Provides a protected route (conceptually) to the Parent Dashboard.
+ * 
+ * @route /
+ */
 export function ProfileSelection() {
     const navigate = useNavigate();
     const { profiles } = useStore();

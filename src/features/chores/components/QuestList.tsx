@@ -1,12 +1,24 @@
-import { useStore } from '../../store';
+import { useStore } from '../../../store';
 import { CheckCircle, Clock, CheckCircle2 } from 'lucide-react';
-import { cn } from '../../lib/utils';
-import type { Assignment } from '../../types';
+import { cn } from '../../../lib/utils';
+import type { Assignment } from '../../../types';
 
 interface QuestListProps {
     assignments: Assignment[];
 }
 
+/**
+ * Child's main to-do list (Quest Log).
+ * 
+ * @description
+ * Displays active assignments for the child. Handles:
+ * - Status visualization (Active, Pending Approval, Verified).
+ * - Interaction (Click to complete).
+ * - Separation of active vs. completed tasks.
+ * 
+ * @param assignments - List of assignment objects to render.
+ * @usedBy ChildDashboard (Quests tab)
+ */
 export function QuestList({ assignments }: QuestListProps) {
     const { chores, toggleAssignment } = useStore();
 

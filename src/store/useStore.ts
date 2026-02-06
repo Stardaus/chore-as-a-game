@@ -3,6 +3,13 @@ import { persist } from 'zustand/middleware';
 import { v4 as uuidv4 } from 'uuid';
 import type { Profile, Chore, Assignment, Reward, Redemption } from '../types';
 
+/**
+ * Global application state definition.
+ * 
+ * @description
+ * Defines the structure for the Zustand store, including data entities (Profiles, Chores)
+ * and actions for modifying the state.
+ */
 interface StoreState {
     profiles: Profile[];
     chores: Chore[];
@@ -36,6 +43,22 @@ interface StoreState {
     seedDefaultChores: () => void;
 }
 
+/**
+ * Main Global State Hook (Zustand).
+ * 
+ * @description
+ * Provides centralized state management for the application. Uses `persist` middleware
+ * to save state to localStorage/IndexedDB automatically.
+ * 
+ * Contains logic for:
+ * - Profile management (CRUD)
+ * - Chore lifecycle (Create, Assign, Verify)
+ * - Reward system (Create, Redeem)
+ * 
+ * @usedBy
+ * - All Dashboard pages
+ * - Feature components (ChoreBank, RewardShop, etc.)
+ */
 export const useStore = create<StoreState>()(
     persist(
         (set) => ({

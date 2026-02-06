@@ -1,10 +1,19 @@
 import { useState } from 'react';
-import { useStore } from '../../store';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/Card';
-import { Button } from '../ui/Button';
-import { Input } from '../ui/Input';
+import { useStore } from '../../../store';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../../components/ui/Card';
+import { Button } from '../../../components/ui/Button';
+import { Input } from '../../../components/ui/Input';
 import { Trash2, Plus, Gift } from 'lucide-react';
 
+/**
+ * Management interface for Rewards.
+ * 
+ * @description
+ * Allows parents to create and manage redeemable rewards (title, point cost).
+ * Lists all active rewards and provides options to archive them.
+ * 
+ * @usedBy ParentDashboard (Rewards tab)
+ */
 export function RewardBank() {
     const { rewards, addReward, archiveReward } = useStore();
 

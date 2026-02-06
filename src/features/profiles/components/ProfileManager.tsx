@@ -1,10 +1,19 @@
 import { useState } from 'react';
-import { useStore } from '../../store';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/Card';
-import { Button } from '../ui/Button';
-import { Input } from '../ui/Input';
+import { useStore } from '../../../store';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../../components/ui/Card';
+import { Button } from '../../../components/ui/Button';
+import { Input } from '../../../components/ui/Input';
 import { Trash2, UserPlus, User } from 'lucide-react';
 
+/**
+ * Parent interface for managing child profiles.
+ * 
+ * @description
+ * Allows parents to create new child profiles (with auto-generated avatars) and delete existing ones.
+ * Displays a list of all active profiles with their current level and points.
+ * 
+ * @usedBy ParentDashboard (Profiles tab)
+ */
 export function ProfileManager() {
     const { profiles, addProfile, deleteProfile } = useStore();
     const [newProfileName, setNewProfileName] = useState('');

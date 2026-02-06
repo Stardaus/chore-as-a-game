@@ -1,12 +1,23 @@
-import { useStore } from '../../store';
-import { Button } from '../ui/Button';
+import { useStore } from '../../../store';
+import { Button } from '../../../components/ui/Button';
 import { Gift, Lock } from 'lucide-react';
-import type { Profile } from '../../types';
+import type { Profile } from '../../../types';
 
 interface RewardShopProps {
     profile: Profile;
 }
 
+/**
+ * Child's redemption interface (Store).
+ * 
+ * @description
+ * Displays available rewards. Logic includes:
+ * - Checking if child has enough points (disable button if not).
+ * - Handling redemption click (deducts points).
+ * 
+ * @param profile - The purchasing child's profile.
+ * @usedBy ChildDashboard (Rewards tab)
+ */
 export function RewardShop({ profile }: RewardShopProps) {
     const { rewards, redeemReward } = useStore();
 

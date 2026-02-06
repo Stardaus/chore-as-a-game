@@ -1,6 +1,18 @@
 import * as React from "react"
 import { cn } from "../../lib/utils"
 
+/**
+ * Container component for grouping content.
+ * 
+ * @description
+ * Provides a consistent rounded, shadowed, and bordered container. 
+ * Often composed with `CardHeader`, `CardTitle`, and `CardContent`.
+ * 
+ * @usedBy
+ * - ChoreBank items
+ * - Profile cards
+ * - Dashboard widgets
+ */
 const Card = React.forwardRef<
     HTMLDivElement,
     React.HTMLAttributes<HTMLDivElement>

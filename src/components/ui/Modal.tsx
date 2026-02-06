@@ -9,6 +9,20 @@ interface ModalProps {
     children: React.ReactNode;
 }
 
+/**
+ * Generic Modal/Dialog overlay.
+ * 
+ * @description
+ * Renders a centered, backdrop-blurred overlay with a content box.
+ * Handles open/closed state via props (controlled component).
+ * 
+ * @param isOpen - Controls visibility.
+ * @param onClose - Callback when the close button or backdrop is clicked.
+ * @param title - Header title for the modal.
+ * @usedBy
+ * - AssignChoreModal
+ * - BulkAssignModal
+ */
 export function Modal({ isOpen, onClose, title, children }: ModalProps) {
     if (!isOpen) return null;
 
