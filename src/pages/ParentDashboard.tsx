@@ -4,6 +4,8 @@ import { ProfileManager } from '../features/profiles/components/ProfileManager';
 import { ChoreBank } from '../features/chores/components/ChoreBank';
 import { RewardBank } from '../features/rewards/components/RewardBank';
 import { ApprovalQueue } from '../features/chores/components/ApprovalQueue';
+import { SettingsModal } from '../features/settings/components/SettingsModal';
+import { ParentAuth } from '../features/auth/components/ParentAuth';
 import { Button } from '../components/ui/Button';
 import { ArrowLeft, Users, ListTodo, Gift, Settings, CheckSquare } from 'lucide-react';
 import { cn } from '../lib/utils';
@@ -23,7 +25,13 @@ type Tab = 'profiles' | 'chores' | 'rewards' | 'approvals';
 export function ParentDashboard() {
     const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState<Tab>('profiles');
+    const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
     const { assignments, chores } = useStore();
+
+    if (!isAuthenticated) {
+        return <ParentAuth onAuthenticated={() => setIsAuthenticated(true)} />;
+    }
 
     // Calculate pending approvals count
     const pendingCount = assignments.filter(a => {
@@ -49,7 +57,7 @@ export function ParentDashboard() {
                     </Button>
                     <h1 className="font-bold text-lg text-slate-900">Parent Dashboard</h1>
                 </div>
-                <Button variant="ghost" size="icon">
+                <Button variant="ghost" size="icon" onClick={() => setIsSettingsOpen(true)}>
                     <Settings className="h-5 w-5 text-slate-500" />
                 </Button>
             </header>
@@ -61,6 +69,9 @@ export function ParentDashboard() {
                 {activeTab === 'approvals' && <ApprovalQueue />}
                 {activeTab === 'rewards' && <RewardBank />}
             </main>
+
+            {/* Settings Modal */}
+            <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
 
             {/* Bottom Navigation */}
             <nav className="bg-white border-t border-slate-200 fixed bottom-0 left-0 right-0 max-w-md mx-auto z-10">

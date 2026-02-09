@@ -15,8 +15,10 @@ import { Trash2, UserPlus, User } from 'lucide-react';
  * @usedBy ParentDashboard (Profiles tab)
  */
 export function ProfileManager() {
-    const { profiles, addProfile, deleteProfile } = useStore();
+    const { profiles, addProfile, deleteProfile, isPremium } = useStore();
     const [newProfileName, setNewProfileName] = useState('');
+
+    const canAddProfile = isPremium || profiles.length < 1;
 
     const handleAddProfile = (e: React.FormEvent) => {
         e.preventDefault();
@@ -41,12 +43,18 @@ export function ProfileManager() {
                             value={newProfileName}
                             onChange={(e) => setNewProfileName(e.target.value)}
                             className="flex-1"
+                            disabled={!canAddProfile}
                         />
-                        <Button type="submit" disabled={!newProfileName.trim()}>
+                        <Button type="submit" disabled={!newProfileName.trim() || !canAddProfile}>
                             <UserPlus className="mr-2 h-4 w-4" />
                             Add
                         </Button>
                     </form>
+                    {!canAddProfile && (
+                        <p className="text-xs text-amber-600 mt-2 font-medium">
+                            Free plan limit reached (1 Profile). Upgrade to Premium to add more.
+                        </p>
+                    )}
                 </CardContent>
             </Card>
 

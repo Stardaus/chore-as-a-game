@@ -1,7 +1,22 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import type { StateStorage } from 'zustand/middleware';
 import { v4 as uuidv4 } from 'uuid';
+import { get, set, del } from 'idb-keyval';
 import type { Profile, Chore, Assignment, Reward, Redemption } from '../types';
+
+// Custom storage object for IndexedDB using idb-keyval
+const storage: StateStorage = {
+    getItem: async (name: string): Promise<string | null> => {
+        return (await get(name)) || null;
+    },
+    setItem: async (name: string, value: string): Promise<void> => {
+        await set(name, value);
+    },
+    removeItem: async (name: string): Promise<void> => {
+        await del(name);
+    },
+};
 
 /**
  * Global application state definition.
@@ -16,6 +31,10 @@ interface StoreState {
     assignments: Assignment[];
     rewards: Reward[];
     redemptions: Redemption[];
+    isPremium: boolean;
+    parentPin: string;
+    recoveryQuestion: string;
+    recoveryAnswer: string;
 
     // Profile Actions
     addProfile: (name: string, avatar: string) => void;
@@ -41,6 +60,17 @@ interface StoreState {
     // Bulk & Seed Actions
     assignChoresByTag: (tag: string, childIds: string[]) => void;
     seedDefaultChores: () => void;
+    
+    // Premium Actions
+    setPremium: (status: boolean) => void;
+
+    // Auth Actions
+    setParentPin: (pin: string) => void;
+    setRecoveryInfo: (question: string, answer: string) => void;
+
+    // Data Management Actions
+    resetPoints: () => void;
+    resetAllData: () => void;
 }
 
 /**
@@ -67,17 +97,51 @@ export const useStore = create<StoreState>()(
             assignments: [],
             rewards: [],
             redemptions: [],
+            isPremium: false,
+            parentPin: '0000', // Default PIN
+            recoveryQuestion: '',
+            recoveryAnswer: '',
 
-            addProfile: (name, avatar) => set((state) => ({
-                profiles: [...state.profiles, {
-                    id: uuidv4(),
-                    name,
-                    avatar,
-                    points: 0,
-                    xp: 0,
-                    level: 1
-                }]
+            setPremium: (status) => set({ isPremium: status }),
+
+            setParentPin: (pin: string) => set({ parentPin: pin }),
+
+            setRecoveryInfo: (question: string, answer: string) => set({ 
+                recoveryQuestion: question, 
+                recoveryAnswer: answer.toLowerCase().trim() 
+            }),
+
+            resetPoints: () => set((state) => ({
+                profiles: state.profiles.map(p => ({ ...p, points: 0, xp: 0, level: 1 })),
+                assignments: state.assignments.map(a => ({ ...a, completed: false, completedAt: undefined, verifiedAt: undefined })),
+                redemptions: []
             })),
+
+            resetAllData: () => set({
+                profiles: [],
+                chores: [],
+                assignments: [],
+                rewards: [],
+                redemptions: [],
+                isPremium: false
+            }),
+
+            addProfile: (name, avatar) => set((state) => {
+                if (!state.isPremium && state.profiles.length >= 1) {
+                    alert("Free tier is limited to 1 child profile. Upgrade to Premium for unlimited profiles!");
+                    return state;
+                }
+                return {
+                    profiles: [...state.profiles, {
+                        id: uuidv4(),
+                        name,
+                        avatar,
+                        points: 0,
+                        xp: 0,
+                        level: 1
+                    }]
+                };
+            }),
 
             updateProfile: (id, updates) => set((state) => ({
                 profiles: state.profiles.map((p) => p.id === id ? { ...p, ...updates } : p)
@@ -89,9 +153,15 @@ export const useStore = create<StoreState>()(
                 redemptions: state.redemptions.filter((r) => r.childId !== id)
             })),
 
-            addChore: (chore) => set((state) => ({
-                chores: [...state.chores, { ...chore, id: uuidv4(), status: 'active' }]
-            })),
+            addChore: (chore) => set((state) => {
+                if (!state.isPremium && state.chores.length >= 5) {
+                    alert("Free tier is limited to 5 chores. Upgrade to Premium for unlimited chores!");
+                    return state;
+                }
+                return {
+                    chores: [...state.chores, { ...chore, id: uuidv4(), status: 'active' }]
+                };
+            }),
 
             updateChore: (id, updates) => set((state) => ({
                 chores: state.chores.map((c) => c.id === id ? { ...c, ...updates } : c)
@@ -198,9 +268,15 @@ export const useStore = create<StoreState>()(
                 };
             }),
 
-            addReward: (reward) => set((state) => ({
-                rewards: [...state.rewards, { ...reward, id: uuidv4(), status: 'active' }]
-            })),
+            addReward: (reward) => set((state) => {
+                if (!state.isPremium && state.rewards.length >= 3) {
+                    alert("Free tier is limited to 3 rewards. Upgrade to Premium for unlimited rewards!");
+                    return state;
+                }
+                return {
+                    rewards: [...state.rewards, { ...reward, id: uuidv4(), status: 'active' }]
+                };
+            }),
 
             archiveReward: (id) => set((state) => ({
                 rewards: state.rewards.map((r) => r.id === id ? { ...r, status: 'archived' } : r)
@@ -255,25 +331,36 @@ export const useStore = create<StoreState>()(
                     { title: 'Isha Prayer', points: 40, frequency: 'daily' as const, requiresApproval: false, icon: 'MoonStar', tags: ['prayer', 'daily'] },
                 ];
 
+                const activeChoresCount = state.chores.filter(c => c.status === 'active').length;
                 const existingTitles = new Set(state.chores.map(c => c.title));
 
-                const newChores = prayers
-                    .filter(p => !existingTitles.has(p.title))
-                    .map(p => ({
-                        id: uuidv4(),
-                        ...p,
-                        status: 'active' as const
-                    }));
+                let newChores = prayers.filter(p => !existingTitles.has(p.title));
+
+                if (!state.isPremium) {
+                    const remainingSlots = Math.max(0, 5 - activeChoresCount);
+                    if (remainingSlots === 0) {
+                        alert("Free tier limit reached. Upgrade to Premium to seed more chores.");
+                        return state;
+                    }
+                    newChores = newChores.slice(0, remainingSlots);
+                }
 
                 if (newChores.length === 0) return state;
 
+                const choresWithIds = newChores.map(p => ({
+                    id: uuidv4(),
+                    ...p,
+                    status: 'active' as const
+                }));
+
                 return {
-                    chores: [...state.chores, ...newChores]
+                    chores: [...state.chores, ...choresWithIds]
                 };
             })
         }),
         {
             name: 'chore-quest-storage',
+            storage: createJSONStorage(() => storage),
         }
     )
 );

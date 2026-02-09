@@ -15,10 +15,13 @@ import { Trash2, Plus, Gift } from 'lucide-react';
  * @usedBy ParentDashboard (Rewards tab)
  */
 export function RewardBank() {
-    const { rewards, addReward, archiveReward } = useStore();
+    const { rewards, addReward, archiveReward, isPremium } = useStore();
 
     const [title, setTitle] = useState('');
     const [cost, setCost] = useState('50');
+
+    const activeRewards = rewards.filter(r => r.status === 'active');
+    const canAddReward = isPremium || activeRewards.length < 3;
 
     const handleAddReward = (e: React.FormEvent) => {
         e.preventDefault();
@@ -46,6 +49,7 @@ export function RewardBank() {
                                 placeholder="e.g. 30 Mins Screen Time"
                                 value={title}
                                 onChange={(e) => setTitle(e.target.value)}
+                                disabled={!canAddReward}
                             />
                         </div>
                         <div className="w-24">
@@ -53,18 +57,24 @@ export function RewardBank() {
                                 type="number"
                                 value={cost}
                                 onChange={(e) => setCost(e.target.value)}
+                                disabled={!canAddReward}
                             />
                         </div>
-                        <Button type="submit" disabled={!title.trim()}>
+                        <Button type="submit" disabled={!title.trim() || !canAddReward}>
                             <Plus className="mr-2 h-4 w-4" />
                             Add
                         </Button>
                     </form>
+                    {!canAddReward && (
+                        <p className="text-xs text-amber-600 mt-2 font-medium">
+                            Free plan limit reached (3 Rewards). Upgrade to Premium to add more.
+                        </p>
+                    )}
                 </CardContent>
             </Card>
 
             <div className="space-y-4">
-                <h3 className="text-lg font-semibold px-2">Reward Bank ({rewards.filter(r => r.status === 'active').length})</h3>
+                <h3 className="text-lg font-semibold px-2">Reward Bank ({activeRewards.length})</h3>
                 <div className="grid gap-3">
                     {rewards.filter(r => r.status === 'active').map((reward) => (
                         <Card key={reward.id} className="overflow-hidden">

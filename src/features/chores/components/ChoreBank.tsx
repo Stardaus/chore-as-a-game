@@ -21,7 +21,7 @@ import { BulkAssignModal } from './BulkAssignModal';
  * @usedBy ParentDashboard (Chores tab)
  */
 export function ChoreBank() {
-    const { chores, addChore, archiveChore, seedDefaultChores } = useStore();
+    const { chores, addChore, archiveChore, isPremium } = useStore();
     const [assigningChore, setAssigningChore] = useState<Chore | null>(null);
 
     const [title, setTitle] = useState('');
@@ -33,6 +33,7 @@ export function ChoreBank() {
     const [isBulkAssignModalOpen, setIsBulkAssignModalOpen] = useState(false);
 
     const activeChores = chores.filter(c => c.status === 'active');
+    const canAddChore = isPremium || activeChores.length < 5;
 
     const handleAddChore = (e: React.FormEvent) => {
         e.preventDefault();
@@ -67,9 +68,6 @@ export function ChoreBank() {
                             <Button variant="outline" size="sm" onClick={() => setIsBulkAssignModalOpen(true)} className="gap-2 w-full sm:w-auto">
                                 <Plus className="h-4 w-4" /> Bulk Assign
                             </Button>
-                            <Button variant="secondary" size="sm" onClick={seedDefaultChores} className="gap-2 w-full sm:w-auto">
-                                <Plus className="h-4 w-4" /> Seed Prayers
-                            </Button>
                         </div>
                     </div>
                 </CardHeader>
@@ -82,6 +80,7 @@ export function ChoreBank() {
                                     placeholder="e.g. Clean Room"
                                     value={title}
                                     onChange={(e) => setTitle(e.target.value)}
+                                    disabled={!canAddChore}
                                 />
                             </div>
                             <div className="space-y-2">
@@ -90,14 +89,16 @@ export function ChoreBank() {
                                     type="number"
                                     value={points}
                                     onChange={(e) => setPoints(e.target.value)}
+                                    disabled={!canAddChore}
                                 />
                             </div>
                             <div className="space-y-2">
                                 <label className="text-sm font-medium">Frequency</label>
                                 <select
-                                    className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                                    className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
                                     value={frequency}
                                     onChange={(e) => setFrequency(e.target.value as Frequency)}
+                                    disabled={!canAddChore}
                                 >
                                     <option value="daily">Daily</option>
                                     <option value="weekly">Weekly</option>
@@ -110,6 +111,7 @@ export function ChoreBank() {
                                     placeholder="e.g. prayer, daily, kitchen"
                                     value={tags}
                                     onChange={(e) => setTags(e.target.value)}
+                                    disabled={!canAddChore}
                                 />
                             </div>
                         </div>
@@ -118,17 +120,23 @@ export function ChoreBank() {
                             <input
                                 type="checkbox"
                                 id="approval"
-                                className="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                                className="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 disabled:opacity-50"
                                 checked={requiresApproval}
                                 onChange={(e) => setRequiresApproval(e.target.checked)}
+                                disabled={!canAddChore}
                             />
                             <label htmlFor="approval" className="text-sm font-medium">Requires Parent Approval</label>
                         </div>
 
-                        <Button type="submit" className="w-full text-center">
+                        <Button type="submit" className="w-full text-center" disabled={!canAddChore}>
                             <Plus className="mr-2 h-4 w-4 inline-block" /> Add Chore
                         </Button>
                     </form>
+                    {!canAddChore && (
+                        <p className="text-xs text-amber-600 mt-2 font-medium">
+                            Free plan limit reached (5 Chores). Upgrade to Premium to add more.
+                        </p>
+                    )}
                 </CardContent>
             </Card>
 
