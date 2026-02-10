@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useStore } from '../store';
+import { useShallow } from 'zustand/react/shallow';
 import { ChildHeader } from '../features/profiles/components/ChildHeader';
 import { QuestList } from '../features/chores/components/QuestList';
 import { RewardShop } from '../features/rewards/components/RewardShop';
@@ -23,11 +24,17 @@ import confetti from 'canvas-confetti';
 export function ChildDashboard() {
     const { childId } = useParams();
     const navigate = useNavigate();
-    const { profiles, assignments } = useStore();
     const [activeTab, setActiveTab] = useState<'quests' | 'rewards'>('quests');
 
-    const profile = profiles.find((p) => p.id === childId);
-    const myAssignments = assignments.filter((a) => a.childId === childId);
+    // Select raw arrays with useShallow (stable references)
+    const { profiles, assignments } = useStore(useShallow((state) => ({
+        profiles: state.profiles,
+        assignments: state.assignments,
+    })));
+
+    // Derive child-specific data with useMemo (avoids new refs on every render)
+    const profile = useMemo(() => profiles.find((p) => p.id === childId), [profiles, childId]);
+    const myAssignments = useMemo(() => assignments.filter((a) => a.childId === childId), [assignments, childId]);
 
     // Level up detection
     const prevLevelRef = useRef(profile?.level);
@@ -60,7 +67,7 @@ export function ChildDashboard() {
         <div className="min-h-screen bg-slate-50 pb-20">
             <div className="sticky top-0 z-20 bg-slate-50">
                 <div className="absolute top-4 left-4 z-30">
-                    <Button variant="ghost" size="icon" className="text-white hover:bg-white/20 hover:text-white rounded-full bg-black/10 backdrop-blur-sm" onClick={() => navigate('/')}>
+                    <Button variant="ghost" size="icon" className="text-white hover:bg-white/20 hover:text-white rounded-full bg-black/20" onClick={() => navigate('/')}>
                         <ArrowLeft className="h-5 w-5" />
                     </Button>
                 </div>
@@ -104,3 +111,4 @@ export function ChildDashboard() {
         </div>
     );
 }
+

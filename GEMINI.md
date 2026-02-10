@@ -11,3 +11,11 @@ This project follows these specific technology and implementation guidelines:
 **MUST DO**
     - code obfuscation via vite minification
     - encryption of IndexedDB
+
+**Workflow & Planning**
+- Use `docs/PLAN.md` to plan implementation of any changes.
+- **Process:**
+    1.  Propose a detailed plan in `docs/PLAN.md`.
+    2.  Discuss and refine the plan with the user until they are satisfied.
+    3.  **WAIT** for the user's explicit prompt to execute the plan.
+    4.  Upon execution, comment out the completed plan within `docs/PLAN.md` to preserve history while clearing space for future plans.

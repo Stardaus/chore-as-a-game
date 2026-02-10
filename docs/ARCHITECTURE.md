@@ -79,3 +79,22 @@ The application state is managed in `src/store/useStore.ts` using Zustand with p
 
 ## 6. Utilities
 - **`cn`**: (`src/lib/utils.ts`) Combines Tailwind classes conditionally and handles merging conflicts.
+
+## 7. Dependency Mapping & Module Graph
+
+The following table maps the critical file dependencies, illustrating how the Feature-Based Architecture is wired together.
+
+| Scope | File / Module | Depends On (Imports) | Description |
+| :--- | :--- | :--- | :--- |
+| **Entry** | `src/main.tsx` | `App.tsx`, `index.css`, `virtual:pwa-register` | Application bootstrapper. |
+| **Routing** | `src/App.tsx` | `pages/*`, `layouts/Layout` | Route definitions and layout wrapping. |
+| **State** | `src/store/useStore.ts` | `zustand`, `idb-keyval`, `types/index.ts` | Centralized state; **no component imports** to avoid cycles. |
+| **Pages** | `ChildDashboard.tsx` | `features/profiles/ChildHeader`<br>`features/chores/QuestList`<br>`features/rewards/RewardShop` | **Aggregator**: Combines read-only profile views with interactive chore/reward lists. |
+| | `ParentDashboard.tsx` | `features/profiles/ProfileManager`<br>`features/chores/ChoreBank`<br>`features/rewards/RewardBank`<br>`features/settings/SettingsModal` | **Aggregator**: Hosts management components for all domains. |
+| | `ProfileSelection.tsx` | `store`, `components/ui/` | Landing page using direct store access. |
+| **Feature: Chores** | `QuestList.tsx` | `store`, `types`, `components/ui/` | Renders `Assignment` objects; dispatches `toggleAssignment`. |
+| | `ChoreBank.tsx` | `store`, `types`, `components/ui/` | Renders/Edits `Chore` definitions. |
+| **Feature: Profiles** | `ChildHeader.tsx` | `types` | Pure presentational component for stats (XP, Level). |
+| | `ProfileManager.tsx` | `store`, `components/ui/` | Manages `Profile` CRUD operations. |
+| **Feature: Auth** | `ParentAuth.tsx` | `store` (PIN/Recovery), `components/ui/` | Gatekeeper for Parent Dashboard. |
+| **Shared** | `components/ui/*` | `react`, `lucide-react`, `lib/utils` | Pure UI elements; **zero domain logic**. |

@@ -1,3 +1,4 @@
+import { startTransition } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store';
 import { Button } from '../components/ui/Button';
@@ -28,7 +29,7 @@ export function ProfileSelection() {
                     {profiles.map((profile) => (
                         <button
                             key={profile.id}
-                            onClick={() => navigate(`/child/${profile.id}`)}
+                            onClick={() => startTransition(() => navigate(`/child/${profile.id}`))}
                             className="group relative flex flex-col items-center p-6 bg-white rounded-2xl shadow-sm border border-slate-200 hover:border-indigo-500 hover:shadow-md transition-all text-center space-y-4"
                         >
                             <div className="relative">
@@ -52,7 +53,7 @@ export function ProfileSelection() {
                     {profiles.length === 0 && (
                         <div className="col-span-2 text-center py-8 bg-dashed border-2 border-slate-200 rounded-2xl border-dashed">
                             <p className="text-slate-400 mb-4">No profiles found.</p>
-                            <Button onClick={() => navigate('/parent')}>
+                            <Button onClick={() => startTransition(() => navigate('/parent'))}>
                                 <UserPlus className="mr-2 h-4 w-4" />
                                 Set up Profiles
                             </Button>
@@ -64,7 +65,7 @@ export function ProfileSelection() {
                     <Button
                         variant="outline"
                         className="gap-2 text-slate-500 hover:text-slate-900"
-                        onClick={() => navigate('/parent')}
+                        onClick={() => startTransition(() => navigate('/parent'))}
                     >
                         <Lock className="h-4 w-4" />
                         Parent Dashboard

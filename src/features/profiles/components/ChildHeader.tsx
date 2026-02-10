@@ -1,3 +1,4 @@
+import React from 'react';
 import type { Profile } from '../../../types';
 import { Crown, Star, Trophy } from 'lucide-react';
 
@@ -17,7 +18,7 @@ interface ChildHeaderProps {
  * @param profile - The child profile data to display.
  * @usedBy ChildDashboard (Sticky top header)
  */
-export function ChildHeader({ profile }: ChildHeaderProps) {
+const ChildHeaderComponent = ({ profile }: ChildHeaderProps) => {
     // Simple level progress calculation (e.g. 100 XP per level)
     const xpForNextLevel = 100;
     const progress = (profile.xp % xpForNextLevel) / xpForNextLevel * 100;
@@ -26,8 +27,8 @@ export function ChildHeader({ profile }: ChildHeaderProps) {
         <div className="bg-indigo-600 text-white p-6 rounded-b-[2rem] shadow-lg relative overflow-hidden">
             <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none">
                 {/* Background pattern */}
-                <div className="absolute top-[-20%] left-[-10%] w-40 h-40 bg-white rounded-full mix-blend-overlay blur-3xl"></div>
-                <div className="absolute bottom-[-20%] right-[-10%] w-40 h-40 bg-white rounded-full mix-blend-overlay blur-3xl"></div>
+                <div className="absolute top-[-20%] left-[-10%] w-40 h-40 bg-white/20 rounded-full"></div>
+                <div className="absolute bottom-[-20%] right-[-10%] w-40 h-40 bg-white/20 rounded-full"></div>
             </div>
 
             <div className="relative z-10 flex items-center gap-4">
@@ -62,7 +63,7 @@ export function ChildHeader({ profile }: ChildHeaderProps) {
 
             {/* Stats Row */}
             <div className="mt-6 flex gap-3">
-                <div className="flex-1 bg-white/10 backdrop-blur-sm rounded-xl p-3 flex items-center gap-3 border border-white/10">
+                <div className="flex-1 bg-white/15 rounded-xl p-3 flex items-center gap-3 border border-white/10">
                     <div className="h-8 w-8 rounded-full bg-yellow-400/20 flex items-center justify-center text-yellow-300">
                         <Star className="h-5 w-5 fill-current" />
                     </div>
@@ -72,7 +73,7 @@ export function ChildHeader({ profile }: ChildHeaderProps) {
                     </div>
                 </div>
                 {/* Achievement Placeholder */}
-                <div className="flex-1 bg-white/10 backdrop-blur-sm rounded-xl p-3 flex items-center gap-3 border border-white/10 opacity-70">
+                <div className="flex-1 bg-white/15 rounded-xl p-3 flex items-center gap-3 border border-white/10 opacity-70">
                     <div className="h-8 w-8 rounded-full bg-purple-400/20 flex items-center justify-center text-purple-300">
                         <Trophy className="h-5 w-5" />
                     </div>
@@ -84,4 +85,6 @@ export function ChildHeader({ profile }: ChildHeaderProps) {
             </div>
         </div>
     );
-}
+};
+
+export const ChildHeader = React.memo(ChildHeaderComponent);
