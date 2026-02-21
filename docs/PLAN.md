@@ -9,63 +9,41 @@ Use this file to plan changes.
 4. Comment out completed plans (wrap in <!-- -->).
 -->
 
-## Performance Optimization (Lag Fix) — *Reviewed & Improved*
+<!--
+## Recreate and Relocate Bulk Assign Button
 
 ### Objective
-Address the navigation lag reported on mobile devices (iPhone) when transitioning from the Profile Selection screen to the Child Dashboard.
+Improve the visibility and utility of the "Bulk Assign" feature by relocating it and giving it a more prominent, functional design.
 
-### Analysis (Confirmed via Code Review)
-
-| # | Root Cause | Severity | Files Affected |
-|---|-----------|----------|----------------|
-| 1 | **Expensive CSS compositing** — `backdrop-blur-sm` forces GPU compositing layers on every frame. Combined with `mix-blend-overlay` + `blur-3xl` on decorative blobs, the mobile GPU stalls during the initial paint of the `ChildDashboard` route. | **High** | `ChildHeader.tsx` (lines 29-30, 65, 75), `ChildDashboard.tsx` (line 63) |
-| 2 | **Over-broad Zustand subscription** — `useStore()` with no selector (destructuring at top level) causes `ChildDashboard` to re-render on *any* store change (e.g. another child's data, chore bank edits). | **Medium** | `ChildDashboard.tsx` (line 26) |
-| 3 | **No memoization on ChildHeader** — `ChildHeader` is a pure presentational component but re-renders whenever the parent does. | **Low** | `ChildHeader.tsx` |
-
-> [!NOTE]
-> The original plan's analysis was correct on points 1 and 2. The confetti logic (point 3 in original) is fine — it is gated by `useRef` + `useEffect` on `profile.level` and won't fire during navigation.
+### Analysis
+The "Bulk Assign" button is currently hidden in the header of the "Add New Chore" card. Since bulk assignment is a high-value tool for setting up routines, it deserves its own space. I will also take this opportunity to expose the "Seed Defaults" feature which is currently in the store but missing from the UI.
 
 ### Proposed Changes
 
-#### 1. Optimize `ChildHeader.tsx` (CSS — High Impact)
--   **Remove `backdrop-blur-sm`** from both stats containers (lines 65, 75). Replace with `bg-white/15` for visual contrast.
--   **Remove `mix-blend-overlay` + `blur-3xl`** from the two decorative blobs (lines 29-30). Replace with simple `opacity-20` circles without blur — achieves similar aesthetic with zero compositing cost.
--   **Wrap in `React.memo`** — since it only receives `profile` as props, this prevents unnecessary re-renders.
+#### 1. Update `ChoreBank.tsx`
+- **Relocation**: Move the "Bulk Assign" button out of the "Add New Chore" header.
+- **New Section**: Create a "Quest Setup Hub" at the top of the Chores tab with two prominent cards:
+    - **Bulk Assign**: A high-contrast card to trigger the bulk assignment modal.
+    - **Quick Seed**: A card to trigger `seedDefaultChores` (e.g., adding daily prayers).
+- **Design**: Use gradients and larger icons to make these "Quick Actions" feel more like game tools.
 
-#### 2. Optimize `ChildDashboard.tsx` (React — Medium Impact)
--   **Remove `backdrop-blur-sm`** from the back button (line 63). Replace with `bg-black/20`.
--   **Use `useShallow` selector** — Zustand v5.0.10 is installed, which exports `useShallow` from `zustand/react/shallow`. Derive only `profile` and `myAssignments`:
-    ```typescript
-    import { useShallow } from 'zustand/react/shallow';
-
-    const { profile, myAssignments } = useStore(useShallow((state) => ({
-        profile: state.profiles.find((p) => p.id === childId),
-        myAssignments: state.assignments.filter((a) => a.childId === childId),
-    })));
-    ```
--   **Wrap navigation in `startTransition`** *(optional enhancement)* — in `ProfileSelection.tsx`, wrapping `navigate()` in `React.startTransition` allows React to keep the current screen responsive while preparing the next route. This is a low-risk, high-payoff change for perceived performance.
-
-#### 3. No changes to `ProfileSelection.tsx` (Confirmed Clean)
--   The `navigate` call is synchronous with no blocking computation. No changes needed beyond the optional `startTransition` above.
+#### 2. Visual Improvements
+- Use `Zap` (for Bulk Assign) and `Sparkles` (for Seed Defaults) icons from Lucide.
+- Add descriptive text to explain what each tool does.
 
 ### Detailed Steps
 
-1.  **Modify [`ChildHeader.tsx`](file:///Users/nina/development/projects/chore-as-a-game/src/features/profiles/components/ChildHeader.tsx)**:
-    -   Wrap the component export with `React.memo`.
-    -   Lines 29-30: Replace `bg-white rounded-full mix-blend-overlay blur-3xl` → `bg-white/20 rounded-full` (remove blur + blend mode).
-    -   Lines 65, 75: Replace `bg-white/10 backdrop-blur-sm` → `bg-white/15` (drop the blur).
-
-2.  **Modify [`ChildDashboard.tsx`](file:///Users/nina/development/projects/chore-as-a-game/src/pages/ChildDashboard.tsx)**:
-    -   Add import: `import { useShallow } from 'zustand/react/shallow';`
-    -   Line 26: Replace `const { profiles, assignments } = useStore();` with the `useShallow` selector shown above.
-    -   Lines 29-30: Remove the now-redundant `profiles.find` / `assignments.filter` (moved into selector).
-    -   Line 63: Replace `bg-black/10 backdrop-blur-sm` → `bg-black/20` on the back button.
-
-3.  **(Optional) Modify [`ProfileSelection.tsx`](file:///Users/nina/development/projects/chore-as-a-game/src/pages/ProfileSelection.tsx)**:
-    -   Wrap `navigate()` calls in `startTransition` for smoother route transitions.
+1.  **Modify [`src/features/chores/components/ChoreBank.tsx`](file:///Users/nina/development/projects/chore-as-a-game/src/features/chores/components/ChoreBank.tsx)**:
+    - Remove the old button from the header.
+    - Add `seedDefaultChores` to the store destructuring.
+    - Implement the "Setup Hub" grid at the top of the `return` statement.
+    - Update icons and styles.
 
 ### Verification
--   No automated tests exist in this project currently.
--   **Manual test**: User to deploy and test on iPhone — navigate from Profile Selection → Child Dashboard and observe for lag/jank.
--   **Dev tools check**: Use Chrome DevTools → Performance tab → CPU throttle 4x to simulate mobile. The "Rendering" paint flashing overlay should show fewer compositing layers after the fix.
+- **Manual Test**:
+    1. Go to Parent Dashboard -> Chores.
+    2. Verify the new "Setup Hub" is visible at the top.
+    3. Test "Bulk Assign" button -> Modal should open.
+    4. Test "Seed Defaults" button -> Default chores should appear in the list.
+-->
 -->

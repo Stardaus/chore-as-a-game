@@ -51,6 +51,7 @@ interface StoreState {
     assignChore: (choreId: string, childId: string) => void;
     toggleAssignment: (assignmentId: string) => void;
     approveAssignment: (assignmentId: string) => void;
+    refreshAssignments: () => void;
 
     // Reward Actions
     addReward: (reward: Omit<Reward, 'id' | 'status'>) => void;
@@ -176,14 +177,50 @@ export const useStore = create<StoreState>()(
                 chores: state.chores.map((c) => c.id === id ? { ...c, status: 'archived' } : c)
             })),
 
-            assignChore: (choreId, childId) => set((state) => ({
-                assignments: [...state.assignments, {
-                    id: uuidv4(),
-                    choreId,
-                    childId,
-                    completed: false
-                }]
-            })),
+            assignChore: (choreId, childId) => set((state) => {
+                const chore = state.chores.find(c => c.id === choreId);
+                if (!chore) return state;
+
+                const now = new Date();
+                const todayStr = now.toISOString().split('T')[0];
+                
+                // Determine if there's already an active assignment for this period
+                const alreadyAssigned = state.assignments.some(a => {
+                    if (a.choreId !== choreId || a.childId !== childId) return false;
+                    
+                    if (!a.completed) return true; // Already has an incomplete one
+                    
+                    // If completed, check if it's within the same period
+                    const compDate = (a.completedAt || a.createdAt || '').split('T')[0];
+                    if (chore.frequency === 'daily') {
+                        return compDate === todayStr;
+                    } else if (chore.frequency === 'weekly') {
+                        const currentMonday = new Date(now);
+                        currentMonday.setDate(now.getDate() - (now.getDay() === 0 ? 6 : now.getDay() - 1));
+                        const weekStr = currentMonday.toISOString().split('T')[0];
+
+                        const lastCompDate = new Date(a.completedAt || a.createdAt || '');
+                        const lastMonday = new Date(lastCompDate);
+                        lastMonday.setDate(lastCompDate.getDate() - (lastCompDate.getDay() === 0 ? 6 : lastCompDate.getDay() - 1));
+                        const lastWeekStr = lastMonday.toISOString().split('T')[0];
+                        
+                        return lastWeekStr === weekStr;
+                    }
+                    return false; // One-time chores can be reassigned if completed (they are one-time per assignment)
+                });
+
+                if (alreadyAssigned) return state;
+
+                return {
+                    assignments: [...state.assignments, {
+                        id: uuidv4(),
+                        choreId,
+                        childId,
+                        completed: false,
+                        createdAt: now.toISOString()
+                    }]
+                };
+            }),
 
             toggleAssignment: (id) => set((state) => {
                 const assignment = state.assignments.find((a) => a.id === id);
@@ -268,6 +305,87 @@ export const useStore = create<StoreState>()(
                 };
             }),
 
+            refreshAssignments: () => set((state) => {
+                const now = new Date();
+                const todayStr = now.toISOString().split('T')[0];
+                
+                // Weekly identifier (ISO week would be better, but this is simple for MVP)
+                // Get the Monday of the current week
+                const currentMonday = new Date(now);
+                currentMonday.setDate(now.getDate() - (now.getDay() === 0 ? 6 : now.getDay() - 1));
+                const weekStr = currentMonday.toISOString().split('T')[0];
+
+                const newAssignments: Assignment[] = [];
+
+                state.profiles.forEach(profile => {
+                    state.chores.filter(c => c.status === 'active' && c.frequency !== 'one-time').forEach(chore => {
+                        // Check if an active (incomplete) assignment already exists for this chore/child
+                        const activeAssignment = state.assignments.find(a => 
+                            a.choreId === chore.id && 
+                            a.childId === profile.id && 
+                            !a.completed
+                        );
+
+                        if (!activeAssignment) {
+                            // Find the most recent completed assignment
+                            const lastAssignment = state.assignments
+                                .filter(a => a.choreId === chore.id && a.childId === profile.id && a.completed)
+                                .sort((a, b) => {
+                                    const dateA = a.completedAt || a.createdAt || '';
+                                    const dateB = b.completedAt || b.createdAt || '';
+                                    return dateB.localeCompare(dateA);
+                                })[0];
+
+                            let shouldReassign = false;
+
+                            if (!lastAssignment) {
+                                // If never assigned, should we assign it?
+                                // Only if it was previously assigned once (one-time logic is different).
+                                // Actually, if it's a daily/weekly chore, it should probably be assigned if no active one exists
+                                // and it was ever meant for this child.
+                                // For simplicity, we only refresh if there was at least one assignment before.
+                                // Wait, the user said "regenerate the chore once done".
+                                return;
+                            }
+
+                            const lastDate = (lastAssignment.completedAt || lastAssignment.createdAt || '').split('T')[0];
+
+                            if (chore.frequency === 'daily') {
+                                if (lastDate < todayStr) {
+                                    shouldReassign = true;
+                                }
+                            } else if (chore.frequency === 'weekly') {
+                                // Calculate the Monday of the last completion
+                                const lastCompDate = new Date(lastAssignment.completedAt || lastAssignment.createdAt || '');
+                                const lastMonday = new Date(lastCompDate);
+                                lastMonday.setDate(lastCompDate.getDate() - (lastCompDate.getDay() === 0 ? 6 : lastCompDate.getDay() - 1));
+                                const lastWeekStr = lastMonday.toISOString().split('T')[0];
+
+                                if (lastWeekStr < weekStr) {
+                                    shouldReassign = true;
+                                }
+                            }
+
+                            if (shouldReassign) {
+                                newAssignments.push({
+                                    id: uuidv4(),
+                                    choreId: chore.id,
+                                    childId: profile.id,
+                                    completed: false,
+                                    createdAt: now.toISOString()
+                                });
+                            }
+                        }
+                    });
+                });
+
+                if (newAssignments.length === 0) return state;
+
+                return {
+                    assignments: [...state.assignments, ...newAssignments]
+                };
+            }),
+
             addReward: (reward) => set((state) => {
                 if (!state.isPremium && state.rewards.length >= 3) {
                     alert("Free tier is limited to 3 rewards. Upgrade to Premium for unlimited rewards!");
@@ -304,18 +422,46 @@ export const useStore = create<StoreState>()(
                 const choresToAssign = state.chores.filter(c => c.tags?.includes(tag) && c.status === 'active');
                 if (choresToAssign.length === 0) return state;
 
+                const now = new Date();
+                const todayStr = now.toISOString().split('T')[0];
+                const currentMonday = new Date(now);
+                currentMonday.setDate(now.getDate() - (now.getDay() === 0 ? 6 : now.getDay() - 1));
+                const weekStr = currentMonday.toISOString().split('T')[0];
+
                 const newAssignments: Assignment[] = [];
 
                 childIds.forEach(childId => {
                     choresToAssign.forEach(chore => {
-                        newAssignments.push({
-                            id: uuidv4(),
-                            choreId: chore.id,
-                            childId,
-                            completed: false
+                        // Check for duplicate
+                        const alreadyAssigned = state.assignments.some(a => {
+                            if (a.choreId !== chore.id || a.childId !== childId) return false;
+                            if (!a.completed) return true;
+                            
+                            const compDate = (a.completedAt || a.createdAt || '').split('T')[0];
+                            if (chore.frequency === 'daily') return compDate === todayStr;
+                            if (chore.frequency === 'weekly') {
+                                const lastCompDate = new Date(a.completedAt || a.createdAt || '');
+                                const lastMonday = new Date(lastCompDate);
+                                lastMonday.setDate(lastCompDate.getDate() - (lastCompDate.getDay() === 0 ? 6 : lastCompDate.getDay() - 1));
+                                const lastWeekStr = lastMonday.toISOString().split('T')[0];
+                                return lastWeekStr === weekStr;
+                            }
+                            return false;
                         });
+
+                        if (!alreadyAssigned) {
+                            newAssignments.push({
+                                id: uuidv4(),
+                                choreId: chore.id,
+                                childId,
+                                completed: false,
+                                createdAt: now.toISOString()
+                            });
+                        }
                     });
                 });
+
+                if (newAssignments.length === 0) return state;
 
                 return {
                     assignments: [...state.assignments, ...newAssignments]

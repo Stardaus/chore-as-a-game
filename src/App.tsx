@@ -1,10 +1,18 @@
+import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { ProfileSelection } from './pages/ProfileSelection';
 import { ParentDashboard } from './pages/ParentDashboard';
 import { ChildDashboard } from './pages/ChildDashboard';
 import { Layout } from './layouts/Layout';
+import { useStore } from './store';
 
 function App() {
+  const refreshAssignments = useStore(state => state.refreshAssignments);
+
+  useEffect(() => {
+    refreshAssignments();
+  }, [refreshAssignments]);
+
   return (
     <BrowserRouter>
       <Routes>

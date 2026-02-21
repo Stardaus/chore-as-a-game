@@ -22,10 +22,36 @@ interface AssignChoreModalProps {
  * @usedBy ChoreBank
  */
 export function AssignChoreModal({ chore, isOpen, onClose }: AssignChoreModalProps) {
-    const { profiles, assignChore } = useStore();
+    const { profiles, assignChore, assignments } = useStore();
     const [selectedChildIds, setSelectedChildIds] = useState<string[]>([]);
 
+    const now = new Date();
+    const todayStr = now.toISOString().split('T')[0];
+    const currentMonday = new Date(now);
+    currentMonday.setDate(now.getDate() - (now.getDay() === 0 ? 6 : now.getDay() - 1));
+    const weekStr = currentMonday.toISOString().split('T')[0];
+
+    const isAlreadyAssigned = (childId: string) => {
+        if (!chore) return false;
+        return assignments.some(a => {
+            if (a.choreId !== chore.id || a.childId !== childId) return false;
+            if (!a.completed) return true;
+            
+            const compDate = (a.completedAt || a.createdAt || '').split('T')[0];
+            if (chore.frequency === 'daily') return compDate === todayStr;
+            if (chore.frequency === 'weekly') {
+                const lastCompDate = new Date(a.completedAt || a.createdAt || '');
+                const lastMonday = new Date(lastCompDate);
+                lastMonday.setDate(lastCompDate.getDate() - (lastCompDate.getDay() === 0 ? 6 : lastCompDate.getDay() - 1));
+                const lastWeekStr = lastMonday.toISOString().split('T')[0];
+                return lastWeekStr === weekStr;
+            }
+            return false;
+        });
+    };
+
     const toggleChild = (id: string) => {
+        if (isAlreadyAssigned(id)) return;
         setSelectedChildIds(prev =>
             prev.includes(id) ? prev.filter(c => c !== id) : [...prev, id]
         );
@@ -50,16 +76,24 @@ export function AssignChoreModal({ chore, isOpen, onClose }: AssignChoreModalPro
                 <div className="grid grid-cols-2 gap-3">
                     {profiles.map(profile => {
                         const isSelected = selectedChildIds.includes(profile.id);
+                        const disabled = isAlreadyAssigned(profile.id);
+
                         return (
                             <button
                                 key={profile.id}
                                 onClick={() => toggleChild(profile.id)}
-                                className={`relative flex flex-col items-center p-3 rounded-xl border-2 transition-all ${isSelected ? 'border-indigo-500 bg-indigo-50' : 'border-slate-200 hover:border-slate-300'}`}
+                                disabled={disabled}
+                                className={`relative flex flex-col items-center p-3 rounded-xl border-2 transition-all 
+                                    ${disabled ? 'opacity-50 grayscale cursor-not-allowed border-slate-100 bg-slate-50' : 
+                                      isSelected ? 'border-indigo-500 bg-indigo-50' : 'border-slate-200 hover:border-slate-300'}`}
                             >
                                 <div className="h-10 w-10 rounded-full bg-slate-200 overflow-hidden mb-2">
                                     <img src={profile.avatar} alt={profile.name} className="h-full w-full object-cover" />
                                 </div>
                                 <span className="text-sm font-medium">{profile.name}</span>
+                                {disabled && (
+                                    <span className="text-[10px] text-slate-500 font-bold mt-1">Already Done</span>
+                                )}
                                 {isSelected && (
                                     <div className="absolute top-2 right-2 bg-indigo-500 text-white rounded-full p-0.5">
                                         <Check className="h-3 w-3" />

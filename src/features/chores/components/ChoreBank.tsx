@@ -3,7 +3,7 @@ import { useStore } from '../../../store';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
-import { Plus, Clock, Trash2 } from 'lucide-react';
+import { Plus, Clock, Trash2, Zap, Sparkles } from 'lucide-react';
 import type { Frequency, Chore } from '../../../types';
 import { AssignChoreModal } from './AssignChoreModal';
 import { BulkAssignModal } from './BulkAssignModal';
@@ -21,7 +21,7 @@ import { BulkAssignModal } from './BulkAssignModal';
  * @usedBy ParentDashboard (Chores tab)
  */
 export function ChoreBank() {
-    const { chores, addChore, archiveChore, isPremium } = useStore();
+    const { chores, addChore, archiveChore, isPremium, seedDefaultChores } = useStore();
     const [assigningChore, setAssigningChore] = useState<Chore | null>(null);
 
     const [title, setTitle] = useState('');
@@ -56,20 +56,36 @@ export function ChoreBank() {
     };
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 pb-12">
+            {/* Setup Hub Section */}
+            <div className="grid grid-cols-2 gap-4">
+                <button
+                    onClick={() => setIsBulkAssignModalOpen(true)}
+                    className="flex flex-col items-center justify-center p-4 rounded-3xl border-2 border-indigo-100 bg-indigo-50/50 hover:bg-indigo-50 hover:border-indigo-300 transition-all text-left group"
+                >
+                    <div className="h-12 w-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center mb-3 shadow-lg group-hover:scale-110 transition-transform">
+                        <Zap className="h-6 w-6 fill-current" />
+                    </div>
+                    <span className="font-bold text-slate-800">Bulk Assign</span>
+                    <span className="text-[10px] text-slate-500 font-medium text-center leading-tight mt-1 opacity-70">Assign routines by #tag to multiple kids</span>
+                </button>
+
+                <button
+                    onClick={() => seedDefaultChores()}
+                    className="flex flex-col items-center justify-center p-4 rounded-3xl border-2 border-amber-100 bg-amber-50/50 hover:bg-amber-50 hover:border-amber-300 transition-all text-left group"
+                >
+                    <div className="h-12 w-12 rounded-2xl bg-amber-500 text-white flex items-center justify-center mb-3 shadow-lg group-hover:scale-110 transition-transform">
+                        <Sparkles className="h-6 w-6 fill-current" />
+                    </div>
+                    <span className="font-bold text-slate-800">Quick Seed</span>
+                    <span className="text-[10px] text-slate-500 font-medium text-center leading-tight mt-1 opacity-70">Add daily prayers & common tasks instantly</span>
+                </button>
+            </div>
+
             <Card>
                 <CardHeader>
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                        <div>
-                            <CardTitle>Add New Chore</CardTitle>
-                            <CardDescription>Create tasks for your children to complete.</CardDescription>
-                        </div>
-                        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-                            <Button variant="outline" size="sm" onClick={() => setIsBulkAssignModalOpen(true)} className="gap-2 w-full sm:w-auto">
-                                <Plus className="h-4 w-4" /> Bulk Assign
-                            </Button>
-                        </div>
-                    </div>
+                    <CardTitle>Add New Chore</CardTitle>
+                    <CardDescription>Create tasks for your children to complete.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <form onSubmit={handleAddChore} className="space-y-4">
@@ -200,3 +216,4 @@ export function ChoreBank() {
         </div>
     );
 }
+

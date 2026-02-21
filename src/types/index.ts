@@ -28,6 +28,7 @@ export interface Assignment {
     completed: boolean;
     completedAt?: string; // ISO date string
     verifiedAt?: string; // ISO date string if approval required
+    createdAt?: string; // ISO date string
 }
 
 export interface Reward {
