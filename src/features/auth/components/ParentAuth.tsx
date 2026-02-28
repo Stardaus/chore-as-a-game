@@ -1,287 +1,140 @@
-import React, { useState, useEffect } from 'react';
-import { useStore } from '../../../store';
+import { useState } from 'react';
+import { supabase } from '../../../lib/supabase';
 import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
-import { ShieldCheck, ArrowLeft, HelpCircle, Calculator, Key } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../../components/ui/Card';
+import { Mail, Lock, ShieldCheck, Sparkles, AlertCircle } from 'lucide-react';
 
-interface ParentAuthProps {
-    onAuthenticated: () => void;
-}
+/**
+ * Authentication screen for Parents.
+ * 
+ * @description
+ * Provides a unified toggle for Sign In and Sign Up.
+ * Communicates directly with Supabase Auth.
+ */
+export function ParentAuth() {
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-export function ParentAuth({ onAuthenticated }: ParentAuthProps) {
-    const { parentPin, recoveryQuestion, recoveryAnswer, setParentPin } = useStore();
-    const [pin, setPin] = useState('');
-    
-    // Recovery States
-    const [isRecovering, setIsRecovering] = useState(false);
-    const [recoveryMode, setRecoveryMode] = useState<'question' | 'math' | null>(null);
-    const [isSettingNewPin, setIsSettingNewPin] = useState(false);
-    
-    // Inputs
-    const [recoveryAns, setRecoveryAns] = useState('');
-    const [mathAns, setMathAns] = useState('');
-    const [newPin, setNewPin] = useState('');
-    
-    // Math Challenge Data
-    const [mathChallenge, setMathChallenge] = useState({ q: '', a: 0 });
-    
-    const [error, setError] = useState(false);
-    const navigate = useNavigate();
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
 
-    // Generate a math problem on mount or reset
-    useEffect(() => {
-        if (recoveryMode === 'math') {
-            const n1 = Math.floor(Math.random() * 90) + 10; // 10-99
-            const n2 = Math.floor(Math.random() * 90) + 10; // 10-99
-            const n3 = Math.floor(Math.random() * 900) + 100; // 100-999
-            // Example: 23 * 45 + 123
-            setMathChallenge({
-                q: `${n1} × ${n2} + ${n3}`,
-                a: (n1 * n2) + n3
-            });
-            setMathAns('');
-        }
-    }, [recoveryMode]);
-
-    const handleSubmitPin = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (pin === parentPin) {
-            setTimeout(() => onAuthenticated(), 0);
-        } else {
-            setError(true);
-            setPin('');
-            setTimeout(() => setError(false), 2000);
-        }
-    };
-
-    const handleRecoverySubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (recoveryAns.toLowerCase().trim() === recoveryAnswer) {
-            setIsSettingNewPin(true);
-            setIsRecovering(false);
-        } else {
-            setError(true);
-            setRecoveryAns('');
-            setTimeout(() => setError(false), 2000);
-        }
-    };
-
-    const handleMathSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (parseInt(mathAns) === mathChallenge.a) {
-            setIsSettingNewPin(true);
-            setIsRecovering(false);
-        } else {
-            setError(true);
-            setMathAns('');
-            setTimeout(() => setError(false), 2000);
-        }
-    };
-
-    const handleSetNewPin = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (newPin.length < 4) {
-            alert("PIN must be at least 4 digits.");
-            return;
-        }
-        setParentPin(newPin);
-        alert("New PIN saved successfully!");
-        setTimeout(() => onAuthenticated(), 0);
-    };
-
-    // New PIN Setup View
-    if (isSettingNewPin) {
-        return (
-            <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
-                <div className="w-full max-w-md bg-white rounded-3xl shadow-xl p-8 space-y-8 animate-in fade-in zoom-in duration-300">
-                    <div className="flex flex-col items-center text-center space-y-2">
-                        <div className="h-16 w-16 bg-green-100 rounded-full flex items-center justify-center text-green-600 mb-2">
-                            <Key className="h-8 w-8" />
-                        </div>
-                        <h1 className="text-2xl font-bold text-slate-900">Set New PIN</h1>
-                        <p className="text-slate-500">Recovery successful! Please choose a new PIN for your dashboard.</p>
-                    </div>
-
-                    <form onSubmit={handleSetNewPin} className="space-y-6">
-                        <div className="space-y-2">
-                            <Input
-                                type="password"
-                                inputMode="numeric"
-                                autoFocus
-                                placeholder="New 4-digit PIN"
-                                value={newPin}
-                                onChange={(e) => setNewPin(e.target.value)}
-                                className="text-center text-2xl tracking-[1em] h-16"
-                            />
-                        </div>
-                        <Button type="submit" className="w-full h-12 bg-green-600 hover:bg-green-700 text-lg">
-                            Save & Open Dashboard
-                        </Button>
-                    </form>
-                </div>
-            </div>
-        );
+    try {
+      if (isSignUp) {
+        const { error } = await supabase.auth.signUp({ 
+          email, 
+          password,
+          options: {
+            data: { role: 'parent' }
+          }
+        });
+        if (error) throw error;
+        alert('Verification email sent! Please check your inbox.');
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+      }
+    } catch (err: any) {
+      setError(err.message || 'An error occurred during authentication.');
+    } finally {
+      setLoading(false);
     }
+  };
 
-    // Main Recovery View Selection
-    if (isRecovering) {
-        return (
-            <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
-                <div className="w-full max-w-md bg-white rounded-3xl shadow-xl p-8 space-y-8 animate-in fade-in zoom-in duration-300">
-                    <div className="flex flex-col items-center text-center space-y-2">
-                        <div className="h-16 w-16 bg-amber-100 rounded-full flex items-center justify-center text-amber-600 mb-2">
-                            {recoveryMode === 'math' ? <Calculator className="h-8 w-8" /> : <HelpCircle className="h-8 w-8" />}
-                        </div>
-                        <h1 className="text-2xl font-bold text-slate-900">
-                            {recoveryMode === 'math' ? 'Math Challenge' : 'Recovery'}
-                        </h1>
-                        <p className="text-slate-500">
-                            {recoveryMode === 'math' 
-                                ? "Solve this to prove you're a parent." 
-                                : "Recover access to your account."}
-                        </p>
-                    </div>
-
-                    {/* Mode Selection */}
-                    {!recoveryMode && (
-                        <div className="space-y-4">
-                             {recoveryQuestion && (
-                                <Button 
-                                    variant="outline" 
-                                    className="w-full h-14 justify-start px-4 text-left"
-                                    onClick={() => setRecoveryMode('question')}
-                                >
-                                    <div className="flex flex-col items-start">
-                                        <span className="font-semibold text-slate-900">Answer Security Question</span>
-                                        <span className="text-xs text-slate-500">Use your saved secret answer</span>
-                                    </div>
-                                </Button>
-                             )}
-                            
-                            <Button 
-                                variant="outline" 
-                                className="w-full h-14 justify-start px-4 text-left"
-                                onClick={() => setRecoveryMode('math')}
-                            >
-                                <div className="flex flex-col items-start">
-                                    <span className="font-semibold text-slate-900">Solve Math Challenge</span>
-                                    <span className="text-xs text-slate-500">Prove you are an adult</span>
-                                </div>
-                            </Button>
-
-                            <Button variant="ghost" className="w-full" onClick={() => setIsRecovering(false)}>
-                                Back to PIN
-                            </Button>
-                        </div>
-                    )}
-
-                    {/* Security Question Form */}
-                    {recoveryMode === 'question' && (
-                        <form onSubmit={handleRecoverySubmit} className="space-y-6">
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium text-slate-700 block text-center italic">
-                                    "{recoveryQuestion}"
-                                </label>
-                                <Input
-                                    placeholder="Your Answer"
-                                    value={recoveryAns}
-                                    onChange={(e) => setRecoveryAns(e.target.value)}
-                                    className={`text-center ${error ? 'border-red-500 animate-shake' : ''}`}
-                                />
-                                {error && (
-                                    <p className="text-center text-sm text-red-500 font-medium">Incorrect answer.</p>
-                                )}
-                            </div>
-                            <div className="flex flex-col gap-3">
-                                <Button type="submit" className="w-full h-12 bg-amber-600 hover:bg-amber-700">
-                                    Verify & Unlock
-                                </Button>
-                                <Button variant="ghost" onClick={() => setRecoveryMode(null)}>
-                                    Back
-                                </Button>
-                            </div>
-                        </form>
-                    )}
-
-                    {/* Math Challenge Form */}
-                    {recoveryMode === 'math' && (
-                        <form onSubmit={handleMathSubmit} className="space-y-6">
-                            <div className="space-y-4">
-                                <div className="p-6 bg-slate-100 rounded-xl text-center">
-                                    <span className="text-2xl font-mono font-bold tracking-wider text-slate-800">
-                                        {mathChallenge.q} = ?
-                                    </span>
-                                </div>
-                                <Input
-                                    type="number"
-                                    placeholder="Enter Result"
-                                    value={mathAns}
-                                    onChange={(e) => setMathAns(e.target.value)}
-                                    className={`text-center text-lg ${error ? 'border-red-500 animate-shake' : ''}`}
-                                />
-                                {error && (
-                                    <p className="text-center text-sm text-red-500 font-medium">Incorrect. Try again.</p>
-                                )}
-                            </div>
-                            <div className="flex flex-col gap-3">
-                                <Button type="submit" className="w-full h-12 bg-indigo-600 hover:bg-indigo-700">
-                                    Unlock
-                                </Button>
-                                <Button variant="ghost" onClick={() => setRecoveryMode(null)}>
-                                    Back
-                                </Button>
-                            </div>
-                        </form>
-                    )}
-                </div>
-            </div>
-        );
-    }
-
-    return (
-        <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
-            <div className="w-full max-w-md bg-white rounded-3xl shadow-xl p-8 space-y-8 animate-in fade-in zoom-in duration-300">
-                <div className="flex flex-col items-center text-center space-y-2">
-                    <div className="h-16 w-16 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-600 mb-2">
-                        <ShieldCheck className="h-8 w-8" />
-                    </div>
-                    <h1 className="text-2xl font-bold text-slate-900">Parent Access</h1>
-                    <p className="text-slate-500">Please enter your PIN to continue</p>
-                </div>
-
-                <form onSubmit={handleSubmitPin} className="space-y-6">
-                    <div className="space-y-2">
-                        <Input
-                            type="password"
-                            inputMode="numeric"
-                            autoFocus
-                            placeholder="Enter PIN"
-                            value={pin}
-                            onChange={(e) => setPin(e.target.value)}
-                            className={`text-center text-2xl tracking-[1em] h-16 ${error ? 'border-red-500 animate-shake' : ''}`}
-                        />
-                        {error && (
-                            <p className="text-center text-sm text-red-500 font-medium">Incorrect PIN. Try again.</p>
-                        )}
-                        <p className="text-center text-[10px] text-slate-400 uppercase tracking-widest pt-2">Default PIN: 0000</p>
-                    </div>
-
-                    <div className="flex flex-col gap-3">
-                        <Button type="submit" className="w-full h-12 bg-indigo-600 hover:bg-indigo-700 text-lg">
-                            Unlock Dashboard
-                        </Button>
-                        <div className="flex justify-between items-center px-1">
-                            <Button variant="ghost" size="sm" className="gap-2" onClick={() => navigate('/')}>
-                                <ArrowLeft className="h-4 w-4" /> Exit
-                            </Button>
-                            <Button variant="ghost" size="sm" className="text-slate-400 font-normal" onClick={() => setIsRecovering(true)}>
-                                Forgot PIN?
-                            </Button>
-                        </div>
-                    </div>
-                </form>
-            </div>
+  return (
+    <div className="min-h-[80vh] flex flex-col items-center justify-center p-4">
+      <div className="w-full max-w-md space-y-8">
+        <div className="text-center space-y-2">
+          <div className="inline-flex h-16 w-16 items-center justify-center rounded-3xl bg-indigo-600 text-white shadow-xl mb-4 rotate-3 animate-bounce-slow">
+            <ShieldCheck className="h-8 w-8" />
+          </div>
+          <h1 className="text-3xl font-black text-slate-900 tracking-tight">Family Hub</h1>
+          <p className="text-slate-500 font-medium italic">Secure your family quest data</p>
         </div>
-    );
+
+        <Card className="border-2 border-indigo-100 shadow-2xl rounded-[2.5rem] overflow-hidden">
+          <CardHeader className="bg-indigo-50/50 pb-8 pt-8 px-8 border-b border-indigo-100/50">
+            <CardTitle className="text-2xl font-bold text-center text-indigo-900">
+              {isSignUp ? 'Create Family Account' : 'Welcome Back, Admin'}
+            </CardTitle>
+            <CardDescription className="text-center font-medium text-indigo-600/70">
+              {isSignUp ? 'Start your multi-device journey' : 'Sign in to manage your family quests'}
+            </CardDescription>
+          </CardHeader>
+          
+          <CardContent className="p-8">
+            <form onSubmit={handleSubmit} className="space-y-5">
+              {error && (
+                <div className="p-4 rounded-2xl bg-red-50 border border-red-100 flex items-start gap-3 animate-in fade-in slide-in-from-top-2">
+                  <AlertCircle className="h-5 w-5 text-red-500 shrink-0 mt-0.5" />
+                  <p className="text-sm text-red-700 font-medium leading-tight">{error}</p>
+                </div>
+              )}
+
+              <div className="space-y-4">
+                <div className="relative">
+                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                  <Input
+                    type="email"
+                    placeholder="Parent Email"
+                    className="pl-12 h-14 rounded-2xl border-slate-200 bg-slate-50/50 focus:bg-white transition-all text-lg"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="relative">
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                  <Input
+                    type="password"
+                    placeholder="Secure Password"
+                    className="pl-12 h-14 rounded-2xl border-slate-200 bg-slate-50/50 focus:bg-white transition-all text-lg"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+
+              <Button 
+                type="submit" 
+                className="w-full h-14 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white text-lg font-bold shadow-lg shadow-indigo-200 transition-all disabled:opacity-50"
+                disabled={loading}
+              >
+                {loading ? (
+                  <div className="h-6 w-6 border-3 border-white/30 border-t-white rounded-full animate-spin mx-auto" />
+                ) : (
+                  <span className="flex items-center justify-center gap-2">
+                    {isSignUp ? <Sparkles className="h-5 w-5" /> : <ShieldCheck className="h-5 w-5" />}
+                    {isSignUp ? 'Create Family' : 'Enter Dashboard'}
+                  </span>
+                )}
+              </Button>
+            </form>
+
+            <div className="mt-8 pt-6 border-t border-slate-100 text-center">
+              <button
+                type="button"
+                onClick={() => setIsSignUp(!isSignUp)}
+                className="text-sm font-bold text-indigo-600 hover:text-indigo-800 transition-colors"
+              >
+                {isSignUp 
+                  ? 'Already have an account? Sign In' 
+                  : 'New family? Create an account'}
+              </button>
+            </div>
+          </CardContent>
+        </Card>
+
+        <p className="text-center text-xs text-slate-400 font-medium px-8">
+          By continuing, you agree to secure your family quest data on ChoreQuest Cloud.
+        </p>
+      </div>
+    </div>
+  );
 }

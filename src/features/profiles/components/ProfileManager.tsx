@@ -7,21 +7,10 @@ import { Modal } from '../../../components/ui/Modal';
 import { Trash2, UserPlus, User, Pencil } from 'lucide-react';
 import { AvatarSelector } from '../../avatars/components/AvatarSelector';
 
-/**
- * Parent interface for managing child profiles.
- * 
- * @description
- * Allows parents to create new child profiles (with selectable avatars) and delete/edit existing ones.
- * Displays a list of all active profiles with their current level and points.
- * 
- * @usedBy ParentDashboard (Profiles tab)
- */
 export function ProfileManager() {
     const { profiles, addProfile, deleteProfile, updateProfile, isPremium } = useStore();
     const [newProfileName, setNewProfileName] = useState('');
     const [selectedAvatar, setSelectedAvatar] = useState('https://api.dicebear.com/7.x/fun-emoji/svg?seed=Buddy');
-    
-    // Modal states
     const [isSelectorOpen, setIsSelectorOpen] = useState(false);
     const [editingProfileId, setEditingProfileId] = useState<string | null>(null);
 
@@ -29,10 +18,10 @@ export function ProfileManager() {
 
     const handleAddProfile = (e: React.FormEvent) => {
         e.preventDefault();
-        if (newProfileName.trim()) {
-            addProfile(newProfileName.trim(), selectedAvatar);
+        const trimmedName = newProfileName.trim();
+        if (trimmedName && canAddProfile) {
+            addProfile(trimmedName, selectedAvatar);
             setNewProfileName('');
-            // Reset to a random-ish but specific default for the next one
             setSelectedAvatar(`https://api.dicebear.com/7.x/fun-emoji/svg?seed=${Date.now()}`);
         }
     };
@@ -45,11 +34,6 @@ export function ProfileManager() {
             setSelectedAvatar(url);
         }
         setIsSelectorOpen(false);
-    };
-
-    const openEditSelector = (id: string) => {
-        setEditingProfileId(id);
-        setIsSelectorOpen(true);
     };
 
     return (
@@ -73,12 +57,14 @@ export function ProfileManager() {
                                 </div>
                             </button>
                             <div className="flex-1 space-y-2">
-                                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Child's Name</label>
+                                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Child's Name (Max 15)</label>
                                 <Input
                                     placeholder="e.g. Adam"
                                     value={newProfileName}
                                     onChange={(e) => setNewProfileName(e.target.value)}
                                     className="w-full text-lg font-bold h-12"
+                                    maxLength={15}
+                                    required
                                     disabled={!canAddProfile}
                                 />
                             </div>
@@ -98,16 +84,15 @@ export function ProfileManager() {
 
             <div className="grid gap-4 md:grid-cols-2">
                 {profiles.map((profile) => (
-                    <Card key={profile.id} className="overflow-hidden">
+                    <Card key={profile.id} className="overflow-hidden shadow-none border-slate-100">
                         <div className="flex items-center p-4 gap-4">
                             <div className="relative group">
                                 <div className="h-14 w-14 rounded-full overflow-hidden bg-slate-100 border-2 border-slate-200">
                                     <img src={profile.avatar} alt={profile.name} className="h-full w-full object-cover" />
                                 </div>
                                 <button 
-                                    onClick={() => openEditSelector(profile.id)}
+                                    onClick={() => { setEditingProfileId(profile.id); setIsSelectorOpen(true); }}
                                     className="absolute -bottom-1 -right-1 bg-white shadow-md border border-slate-200 p-1.5 rounded-full hover:bg-slate-50 text-slate-600 transition-colors"
-                                    title="Change Avatar"
                                 >
                                     <Pencil className="h-3 w-3" />
                                 </button>
@@ -119,38 +104,18 @@ export function ProfileManager() {
                             <Button
                                 variant="ghost"
                                 size="icon"
-                                onClick={() => {
-                                    if (confirm(`Delete profile for ${profile.name}? This cannot be undone.`)) {
-                                        deleteProfile(profile.id);
-                                    }
-                                }}
-                                className="text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors"
+                                onClick={() => { if (confirm(`Delete profile for ${profile.name}?`)) deleteProfile(profile.id); }}
+                                className="text-slate-300 hover:text-red-500 hover:bg-red-50"
                             >
                                 <Trash2 className="h-5 w-5" />
                             </Button>
                         </div>
                     </Card>
                 ))}
-                {profiles.length === 0 && (
-                    <div className="col-span-full text-center py-16 text-slate-400 bg-white/50 rounded-3xl border-2 border-dashed border-slate-200">
-                        <User className="h-16 w-16 mx-auto mb-4 opacity-10" />
-                        <h3 className="font-bold text-xl text-slate-700">No Hero Profiles Yet</h3>
-                        <p className="max-w-[200px] mx-auto text-sm">Add your children above to start their quest journey!</p>
-                    </div>
-                )}
             </div>
 
-            {/* Avatar Selector Modal */}
-            <Modal
-                isOpen={isSelectorOpen}
-                onClose={() => {
-                    setIsSelectorOpen(false);
-                    setEditingProfileId(null);
-                }}
-                title="Choose an Avatar"
-            >
+            <Modal isOpen={isSelectorOpen} onClose={() => { setIsSelectorOpen(false); setEditingProfileId(null); }} title="Choose an Avatar">
                 <div className="space-y-4">
-                    <p className="text-sm text-slate-500">Select a character for {editingProfileId ? profiles.find(p => p.id === editingProfileId)?.name : 'your child'}:</p>
                     <AvatarSelector 
                         selectedUrl={editingProfileId ? profiles.find(p => p.id === editingProfileId)?.avatar : selectedAvatar}
                         onSelect={handleSelectAvatar} 
@@ -160,4 +125,3 @@ export function ProfileManager() {
         </div>
     );
 }
-

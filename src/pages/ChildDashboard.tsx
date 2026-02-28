@@ -6,101 +6,127 @@ import { ChildHeader } from '../features/profiles/components/ChildHeader';
 import { QuestList } from '../features/chores/components/QuestList';
 import { RewardShop } from '../features/rewards/components/RewardShop';
 import { Button } from '../components/ui/Button';
-import { ArrowLeft, ListTodo, Gift } from 'lucide-react';
+import { ArrowLeft, Trophy, Gift, Sparkles, RefreshCw } from 'lucide-react';
 import { cn } from '../lib/utils';
-import confetti from 'canvas-confetti';
+import canvasConfetti from 'canvas-confetti';
+import { get } from 'idb-keyval';
 
-/**
- * Main Controller for the Child Interface.
- * 
- * @description
- * The primary game view for children. Manages the "Quest List" and "Reward Shop" tabs.
- * Includes logic for:
- * - Detecting level-ups and triggering confetti.
- * - Loading specific child data based on URL params.
- * 
- * @route /child/:childId
- */
+type Tab = 'quests' | 'rewards';
+
 export function ChildDashboard() {
-    const { childId } = useParams();
+    const { childId } = useParams<{ childId: string }>();
     const navigate = useNavigate();
-    const [activeTab, setActiveTab] = useState<'quests' | 'rewards'>('quests');
-
-    // Select raw arrays with useShallow (stable references)
-    const { profiles, assignments } = useStore(useShallow((state) => ({
+    const [activeTab, setActiveTab] = useState<Tab>('quests');
+    
+    const { profiles, assignments, syncWithCloud, isSyncing, familyId } = useStore(useShallow(state => ({
         profiles: state.profiles,
         assignments: state.assignments,
+        syncWithCloud: state.syncWithCloud,
+        isSyncing: state.isSyncing,
+        familyId: state.familyId
     })));
 
-    // Derive child-specific data with useMemo (avoids new refs on every render)
-    const profile = useMemo(() => profiles.find((p) => p.id === childId), [profiles, childId]);
-    const myAssignments = useMemo(() => assignments.filter((a) => a.childId === childId), [assignments, childId]);
-
-    // Level up detection
-    const prevLevelRef = useRef(profile?.level);
-
+    const profile = useMemo(() => profiles.find(p => p.id === childId), [profiles, childId]);
+    
+    // Ensure cloud data is synced when entering the dashboard
     useEffect(() => {
-        if (profile && prevLevelRef.current !== undefined) {
-            if (profile.level > prevLevelRef.current) {
-                confetti({
-                    particleCount: 100,
-                    spread: 70,
-                    origin: { y: 0.6 }
-                });
+        const initDashboard = async () => {
+            const linkedId = familyId || await get('linked-family-id');
+            if (linkedId) {
+                syncWithCloud(linkedId);
             }
+        };
+        initDashboard();
+    }, [childId, familyId, syncWithCloud]);
+
+    // Filter assignments for this specific child
+    const childAssignments = useMemo(() => 
+        assignments.filter(a => a.childId === childId || (a as any).profile_id === childId), 
+    [assignments, childId]);
+
+    // Confetti effect on level up
+    const lastLevel = useRef(profile?.level || 1);
+    useEffect(() => {
+        if (profile && profile.level > lastLevel.current) {
+            canvasConfetti({
+                particleCount: 150,
+                spread: 70,
+                origin: { y: 0.6 },
+                colors: ['#4f46e5', '#818cf8', '#fbbf24']
+            });
+            lastLevel.current = profile.level;
         }
-        prevLevelRef.current = profile?.level;
     }, [profile?.level]);
 
     if (!profile) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4 text-center">
-                <div>
-                    <h1 className="text-2xl font-bold text-slate-900 mb-2">Profile Not Found</h1>
-                    <Button onClick={() => navigate('/')}>Go Back</Button>
+            <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-slate-50">
+                <div className="text-center space-y-4">
+                    <p className="text-slate-500 font-medium">Hero not found!</p>
+                    <Button onClick={() => navigate('/')}>Return to Selection</Button>
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-slate-50 pb-20">
-            <div className="sticky top-0 z-20 bg-slate-50">
-                <div className="absolute top-4 left-4 z-30">
-                    <Button variant="ghost" size="icon" className="text-white hover:bg-white/20 hover:text-white rounded-full bg-black/20" onClick={() => navigate('/')}>
+        <div className="flex flex-col h-screen bg-slate-50 max-w-md mx-auto relative shadow-2xl">
+            {/* Header Area */}
+            <header className="bg-indigo-600 pt-4 pb-20 px-4 relative overflow-hidden">
+                <div className="flex items-center justify-between relative z-10 mb-4">
+                    <button 
+                        onClick={() => navigate('/')}
+                        className="h-10 w-10 rounded-2xl bg-white/20 backdrop-blur-md text-white flex items-center justify-center hover:bg-white/30 transition-all"
+                    >
                         <ArrowLeft className="h-5 w-5" />
-                    </Button>
+                    </button>
+                    <div className="flex items-center gap-2">
+                        {isSyncing && <RefreshCw className="h-4 w-4 text-white/50 animate-spin" />}
+                        <h1 className="text-white font-black tracking-tight">Quest Log</h1>
+                    </div>
+                    <div className="h-10 w-10" /> {/* Spacer */}
                 </div>
+                
                 <ChildHeader profile={profile} />
-            </div>
+                
+                {/* Background Decorations */}
+                <Sparkles className="absolute top-10 right-10 h-20 w-20 text-white/10 rotate-12" />
+                <Trophy className="absolute -bottom-10 -left-10 h-40 w-40 text-white/5 -rotate-12" />
+            </header>
 
-            <main className="p-4">
-                {activeTab === 'quests' ? (
-                    <QuestList assignments={myAssignments} />
-                ) : (
-                    <RewardShop profile={profile} />
-                )}
+            {/* Main Content Area */}
+            <main className="flex-1 -mt-12 relative z-10 px-4 overflow-y-auto hidden-scrollbar pb-24">
+                <div className="bg-white rounded-t-[2.5rem] min-h-full p-6 shadow-sm border-x border-slate-100">
+                    {activeTab === 'quests' ? (
+                        <QuestList assignments={childAssignments} />
+                    ) : (
+                        <RewardShop profile={profile} />
+                    )}
+                </div>
             </main>
 
-            {/* Bottom Navigation */}
-            <nav className="bg-white border-t border-slate-200 fixed bottom-0 left-0 right-0 max-w-md mx-auto z-20 px-6 py-2 pb-6 shadow-[0_-5px_15px_rgba(0,0,0,0.05)]">
-                <div className="flex bg-slate-100 p-1 rounded-2xl relative overflow-hidden">
-                    {/* Animated slider background could go here for polish */}
+            {/* Bottom Nav */}
+            <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-[calc(448px-2rem)] bg-white/80 backdrop-blur-xl border border-slate-200 p-2 rounded-[2rem] shadow-2xl z-50">
+                <div className="flex gap-2">
                     <button
                         onClick={() => setActiveTab('quests')}
                         className={cn(
-                            "flex-1 flex items-center justify-center gap-2 py-3 rounded-xl transition-all font-bold text-sm z-10",
-                            activeTab === 'quests' ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-700"
+                            "flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl font-bold transition-all",
+                            activeTab === 'quests' 
+                                ? "bg-indigo-600 text-white shadow-lg shadow-indigo-200 scale-105" 
+                                : "text-slate-400 hover:bg-slate-100"
                         )}
                     >
-                        <ListTodo className="h-5 w-5" />
+                        <Trophy className="h-5 w-5" />
                         Quests
                     </button>
                     <button
                         onClick={() => setActiveTab('rewards')}
                         className={cn(
-                            "flex-1 flex items-center justify-center gap-2 py-3 rounded-xl transition-all font-bold text-sm z-10",
-                            activeTab === 'rewards' ? "bg-white text-pink-600 shadow-sm" : "text-slate-500 hover:text-slate-700"
+                            "flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl font-bold transition-all",
+                            activeTab === 'rewards' 
+                                ? "bg-amber-500 text-white shadow-lg shadow-amber-100 scale-105" 
+                                : "text-slate-400 hover:bg-slate-100"
                         )}
                     >
                         <Gift className="h-5 w-5" />
@@ -111,4 +137,3 @@ export function ChildDashboard() {
         </div>
     );
 }
-

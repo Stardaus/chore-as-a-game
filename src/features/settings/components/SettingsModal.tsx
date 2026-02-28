@@ -3,8 +3,9 @@ import { Modal } from '../../../components/ui/Modal';
 import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
 import { useStore } from '../../../store';
-import { Check, Star, Lock, Trash2, RefreshCcw, AlertTriangle, Key, Bell, Moon } from 'lucide-react';
+import { Check, Star, Lock, Trash2, RefreshCcw, AlertTriangle, Key, Bell, Moon, Smartphone } from 'lucide-react';
 import { cn } from '../../../lib/utils';
+import { DeviceManager } from '../../auth/components/DeviceManager';
 
 interface SettingsModalProps {
     isOpen: boolean;
@@ -171,7 +172,6 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                         </button>
                     </div>
 
-                    {/* Evening Reminder Setting */}
                     <div className="p-3 bg-indigo-50/50 rounded-xl border border-indigo-100 space-y-3">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
@@ -202,10 +202,16 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                                 />
                             </div>
                         )}
-                        <p className="text-[9px] text-slate-500 leading-tight">
-                            Personalized nudge at your chosen time to check on remaining quests.
-                        </p>
                     </div>
+                </div>
+
+                {/* Device Management Section */}
+                <div className="space-y-4 pt-4 border-t border-slate-100">
+                    <h4 className="font-semibold text-slate-900 flex items-center gap-2">
+                        <Smartphone className="h-4 w-4 text-indigo-500" />
+                        Family Devices
+                    </h4>
+                    <DeviceManager />
                 </div>
 
                 {/* PIN & Recovery Management */}

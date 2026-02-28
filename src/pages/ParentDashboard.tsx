@@ -10,6 +10,7 @@ import { Button } from '../components/ui/Button';
 import { ArrowLeft, Users, ListTodo, Gift, Settings, CheckSquare } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useStore } from '../store';
+import { useAuthStore } from '../store/useAuthStore';
 
 type Tab = 'profiles' | 'chores' | 'rewards' | 'approvals';
 
@@ -18,7 +19,7 @@ type Tab = 'profiles' | 'chores' | 'rewards' | 'approvals';
  * 
  * @description
  * Hosts the management tools (Profiles, Chores, Rewards, Approvals) within a tabbed interface.
- * Calculates badges for pending actions (like approvals) to alert the parent.
+ * STRICTLY gated by Supabase Email/Password session.
  * 
  * @route /parent/*
  */
@@ -26,11 +27,12 @@ export function ParentDashboard() {
     const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState<Tab>('profiles');
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-    const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const { session } = useAuthStore(); // Only allow full session
     const { assignments, chores } = useStore();
 
-    if (!isAuthenticated) {
-        return <ParentAuth onAuthenticated={() => setIsAuthenticated(true)} />;
+    // STRICT SECURITY: Only parents with a session can enter here.
+    if (!session) {
+        return <ParentAuth />;
     }
 
     // Calculate pending approvals count

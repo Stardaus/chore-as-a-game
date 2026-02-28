@@ -11,16 +11,6 @@ interface EditChoreModalProps {
     onClose: () => void;
 }
 
-/**
- * Modal for editing existing chores.
- * 
- * @description
- * Allows parents to modify:
- * - Title
- * - Points
- * - Frequency (daily, weekly, one-time)
- * - Approval status
- */
 export function EditChoreModal({ chore, isOpen, onClose }: EditChoreModalProps) {
     const { updateChore } = useStore();
     const [title, setTitle] = useState('');
@@ -38,10 +28,12 @@ export function EditChoreModal({ chore, isOpen, onClose }: EditChoreModalProps) 
     }, [chore]);
 
     const handleSave = () => {
-        if (chore && title.trim()) {
+        const trimmedTitle = title.trim();
+        if (chore && trimmedTitle) {
+            const pointsNum = Math.min(Math.max(parseInt(points) || 0, 1), 10000);
             updateChore(chore.id, {
-                title: title.trim(),
-                points: parseInt(points) || 0,
+                title: trimmedTitle,
+                points: pointsNum,
                 frequency,
                 requiresApproval
             });
@@ -61,22 +53,26 @@ export function EditChoreModal({ chore, isOpen, onClose }: EditChoreModalProps) 
                         value={title}
                         onChange={(e) => setTitle(e.target.value)}
                         maxLength={40}
+                        required
                     />
                 </div>
                 
                 <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Points</label>
+                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Points (1 - 10k)</label>
                         <Input
                             type="number"
                             value={points}
                             onChange={(e) => setPoints(e.target.value)}
+                            min="1"
+                            max="10000"
+                            required
                         />
                     </div>
                     <div className="space-y-2">
                         <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Frequency</label>
                         <select
-                            className="w-full h-10 rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
+                            className="w-full h-10 rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
                             value={frequency}
                             onChange={(e) => setFrequency(e.target.value as Frequency)}
                         >

@@ -15,14 +15,8 @@ import { EditChoreModal } from './EditChoreModal';
  * Central management interface for Chores.
  * 
  * @description
- * Allows parents to:
- * - Create new chore templates (frequency, points, tags).
- * - Edit existing chore templates.
- * - Assign chores to children (individually or in bulk).
- * - Archive/Delete chores.
- * - Add from predefined templates.
- * 
- * @usedBy ParentDashboard (Chores tab)
+ * Allows parents to create, edit, and manage chore templates.
+ * Enforces logical constraints on titles and points.
  */
 export function ChoreBank() {
     const { chores, addChore, archiveChore, isPremium, assignments, profiles } = useStore();
@@ -49,34 +43,28 @@ export function ChoreBank() {
 
     const isCurrentAssignment = (a: Assignment, chore: Chore) => {
         if (!a.completed) return true;
-        
         const compDate = (a.completedAt || a.createdAt || '').split('T')[0];
-
-        if (chore.frequency === 'daily') {
-            return compDate === todayStr;
-        }
+        if (chore.frequency === 'daily') return compDate === todayStr;
         if (chore.frequency === 'weekly') {
             const lastCompDate = new Date(a.completedAt || a.createdAt || '');
             const lastMon = new Date(lastCompDate);
             lastMon.setDate(lastCompDate.getDate() - (lastCompDate.getDay() === 0 ? 6 : lastCompDate.getDay() - 1));
-            const lastMonStr = lastMon.toISOString().split('T')[0];
-            return lastMonStr === weekStr;
-        }
-        if (chore.frequency === 'one-time') {
-            return false; // One-time chores become "unhooked" (Inactive) as soon as they are completed
+            return lastMon.toISOString().split('T')[0] === weekStr;
         }
         return false;
     };
 
     const handleAddChore = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!title) return;
+        const trimmedTitle = title.trim();
+        if (!trimmedTitle) return;
 
-        const tagList = tags.split(',').map(t => t.trim()).filter(Boolean);
+        const pointsNum = Math.min(Math.max(parseInt(points) || 0, 1), 10000);
+        const tagList = tags.split(',').map(t => t.trim()).filter(Boolean).slice(0, 5); // Max 5 tags
 
         addChore({
-            title,
-            points: parseInt(points) || 0,
+            title: trimmedTitle,
+            points: pointsNum,
             frequency,
             requiresApproval,
             icon: 'Circle',
@@ -91,7 +79,7 @@ export function ChoreBank() {
     const handleArchive = (id: string, title: string) => {
         const isAssigned = assignments.some(a => a.choreId === id);
         if (isAssigned) {
-            if (!confirm(`"${title}" is currently assigned to one or more children. Archiving it will remove it from their quest lists. Are you sure?`)) {
+            if (!confirm(`"${title}" is currently assigned. Archiving it will remove it from quests. Are you sure?`)) {
                 return;
             }
         }
@@ -100,7 +88,6 @@ export function ChoreBank() {
 
     return (
         <div className="space-y-6 pb-12">
-            {/* Setup Hub Section */}
             <div className="grid grid-cols-2 gap-4">
                 <button
                     onClick={() => setIsBulkAssignModalOpen(true)}
@@ -134,26 +121,30 @@ export function ChoreBank() {
                     <form onSubmit={handleAddChore} className="space-y-4">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <label className="text-sm font-medium">Chore Title</label>
+                                <label className="text-sm font-medium text-slate-700">Chore Title</label>
                                 <Input
                                     placeholder="e.g. Clean Room"
                                     value={title}
                                     onChange={(e) => setTitle(e.target.value)}
                                     maxLength={40}
+                                    required
                                     disabled={!canAddChore}
                                 />
                             </div>
                             <div className="space-y-2">
-                                <label className="text-sm font-medium">Points Reward</label>
+                                <label className="text-sm font-medium text-slate-700">Points (1 - 10,000)</label>
                                 <Input
                                     type="number"
                                     value={points}
                                     onChange={(e) => setPoints(e.target.value)}
+                                    min="1"
+                                    max="10000"
+                                    required
                                     disabled={!canAddChore}
                                 />
                             </div>
                             <div className="space-y-2">
-                                <label className="text-sm font-medium">Frequency</label>
+                                <label className="text-sm font-medium text-slate-700">Frequency</label>
                                 <select
                                     className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
                                     value={frequency}
@@ -166,11 +157,12 @@ export function ChoreBank() {
                                 </select>
                             </div>
                             <div className="space-y-2">
-                                <label className="text-sm font-medium">Tags (comma separated)</label>
+                                <label className="text-sm font-medium text-slate-700">Tags (comma separated, max 50 chars)</label>
                                 <Input
                                     placeholder="e.g. prayer, daily, kitchen"
                                     value={tags}
                                     onChange={(e) => setTags(e.target.value)}
+                                    maxLength={50}
                                     disabled={!canAddChore}
                                 />
                             </div>
@@ -185,10 +177,10 @@ export function ChoreBank() {
                                 onChange={(e) => setRequiresApproval(e.target.checked)}
                                 disabled={!canAddChore}
                             />
-                            <label htmlFor="approval" className="text-sm font-medium">Requires Parent Approval</label>
+                            <label htmlFor="approval" className="text-sm font-medium text-slate-700 select-none">Requires Parent Approval</label>
                         </div>
 
-                        <Button type="submit" className="w-full text-center" disabled={!canAddChore}>
+                        <Button type="submit" className="w-full text-center" disabled={!canAddChore || !title.trim()}>
                             <Plus className="mr-2 h-4 w-4 inline-block" /> Add Chore
                         </Button>
                     </form>
@@ -201,10 +193,9 @@ export function ChoreBank() {
             </Card>
 
             <div className="space-y-4">
-                <h3 className="font-bold text-lg">Assignable Chores</h3>
+                <h3 className="font-bold text-lg text-slate-800">Assignable Chores</h3>
                 <div className="grid gap-4">
                     {activeChores.map(chore => {
-                        // Check for current assignments (incomplete OR completed in the current period)
                         const currentAssignments = assignments.filter(a => a.choreId === chore.id && isCurrentAssignment(a, chore));
                         const isAssigned = currentAssignments.length > 0;
                         const assignedProfiles = profiles.filter(p => currentAssignments.some(a => a.childId === p.id));
@@ -215,7 +206,6 @@ export function ChoreBank() {
                                 isAssigned ? "border-indigo-100 bg-indigo-50/20" : "border-slate-100 opacity-80 shadow-none"
                             )}>
                                 <div className="p-4 space-y-4">
-                                    {/* Top Row: Title, Points, and Meta */}
                                     <div className="flex items-start justify-between gap-4">
                                         <div className="flex gap-3">
                                             <div className={cn(
@@ -244,26 +234,15 @@ export function ChoreBank() {
                                         </div>
 
                                         <div className="flex gap-1 shrink-0">
-                                            <Button 
-                                                size="icon" 
-                                                variant="ghost" 
-                                                className="h-8 w-8 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50"
-                                                onClick={() => setEditingChore(chore)}
-                                            >
+                                            <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-400" onClick={() => setEditingChore(chore)}>
                                                 <Pencil className="h-4 w-4" />
                                             </Button>
-                                            <Button
-                                                size="icon"
-                                                variant="ghost"
-                                                className="h-8 w-8 text-red-400 hover:text-red-600 hover:bg-red-50"
-                                                onClick={() => handleArchive(chore.id, chore.title)}
-                                            >
+                                            <Button size="icon" variant="ghost" className="h-8 w-8 text-red-400" onClick={() => handleArchive(chore.id, chore.title)}>
                                                 <Trash2 className="h-4 w-4" />
                                             </Button>
                                         </div>
                                     </div>
 
-                                    {/* Tags Row */}
                                     {chore.tags && chore.tags.length > 0 && (
                                         <div className="flex flex-wrap gap-1.5">
                                             {chore.tags.map(tag => (
@@ -274,15 +253,14 @@ export function ChoreBank() {
                                         </div>
                                     )}
 
-                                    {/* Assignment Section */}
                                     <div className="flex items-center justify-between pt-3 border-t border-slate-100">
                                         <div className="flex items-center gap-2 min-w-0">
                                             {isAssigned ? (
                                                 <>
                                                     <div className="flex -space-x-2 shrink-0">
-                                                        {assignedProfiles.map(profile => (
-                                                            <div key={profile.id} className="h-7 w-7 rounded-full border-2 border-white bg-slate-100 overflow-hidden shadow-sm" title={profile.name}>
-                                                                <img src={profile.avatar} alt={profile.name} className="h-full w-full object-cover" />
+                                                        {assignedProfiles.map(p => (
+                                                            <div key={p.id} className="h-7 w-7 rounded-full border-2 border-white bg-slate-100 overflow-hidden shadow-sm" title={p.name}>
+                                                                <img src={p.avatar} alt={p.name} className="h-full w-full object-cover" />
                                                             </div>
                                                         ))}
                                                     </div>
@@ -294,7 +272,6 @@ export function ChoreBank() {
                                                 <span className="text-[11px] font-medium text-slate-400 italic">No active quests</span>
                                             )}
                                         </div>
-                                        
                                         <Button size="sm" variant={isAssigned ? "outline" : "default"} className="h-8 text-xs font-bold px-4 rounded-full" onClick={() => setAssigningChore(chore)}>
                                             Manage
                                         </Button>
@@ -304,34 +281,17 @@ export function ChoreBank() {
                         );
                     })}
                     {activeChores.length === 0 && (
-                        <div className="text-center py-8 text-slate-400">
-                            <p>No active chores found. Create one above!</p>
+                        <div className="text-center py-12 text-slate-400 border-2 border-dashed border-slate-100 rounded-3xl">
+                            <p className="italic">No assignable chores. Create one above!</p>
                         </div>
                     )}
                 </div>
             </div>
 
-            <AssignChoreModal
-                chore={assigningChore}
-                isOpen={!!assigningChore}
-                onClose={() => setAssigningChore(null)}
-            />
-
-            <BulkAssignModal
-                isOpen={isBulkAssignModalOpen}
-                onClose={() => setIsBulkAssignModalOpen(false)}
-            />
-
-            <TemplateSelectorModal
-                isOpen={isTemplateModalOpen}
-                onClose={() => setIsTemplateModalOpen(false)}
-            />
-
-            <EditChoreModal
-                chore={editingChore}
-                isOpen={!!editingChore}
-                onClose={() => setEditingChore(null)}
-            />
+            <AssignChoreModal chore={assigningChore} isOpen={!!assigningChore} onClose={() => setAssigningChore(null)} />
+            <BulkAssignModal isOpen={isBulkAssignModalOpen} onClose={() => setIsBulkAssignModalOpen(false)} />
+            <TemplateSelectorModal isOpen={isTemplateModalOpen} onClose={() => setIsTemplateModalOpen(false)} />
+            <EditChoreModal chore={editingChore} isOpen={!!editingChore} onClose={() => setEditingChore(null)} />
         </div>
     );
 }

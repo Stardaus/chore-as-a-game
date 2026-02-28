@@ -5,23 +5,17 @@ import { v4 as uuidv4 } from 'uuid';
 import { get, set, del } from 'idb-keyval';
 import type { Profile, Chore, Assignment, Reward, Redemption } from '../types';
 import { NotificationService } from '../services/NotificationService';
+import { supabase } from '../lib/supabase';
+import { Validation } from '../lib/validation';
+import { Mappers } from '../lib/mappers';
 
-// Custom storage object for IndexedDB using idb-keyval
+// Custom storage object for IndexedDB
 const storage: StateStorage = {
-    getItem: async (name: string): Promise<string | null> => {
-        return (await get(name)) || null;
-    },
-    setItem: async (name: string, value: string): Promise<void> => {
-        await set(name, value);
-    },
-    removeItem: async (name: string): Promise<void> => {
-        await del(name);
-    },
+    getItem: async (name: string): Promise<string | null> => (await get(name)) || null,
+    setItem: async (name: string, value: string): Promise<void> => { await set(name, value); },
+    removeItem: async (name: string): Promise<void> => { await del(name); },
 };
 
-/**
- * Global application state definition.
- */
 interface StoreState {
     profiles: Profile[];
     chores: Chore[];
@@ -32,97 +26,76 @@ interface StoreState {
     parentPin: string;
     recoveryQuestion: string;
     recoveryAnswer: string;
-    notificationPrefs: {
-        enabled: boolean;
-        badgeEnabled: boolean;
-    };
-    reminderSettings: {
-        enabled: boolean;
-        time: string; // HH:mm
-        lastSentDate: string | null; // YYYY-MM-DD
-    };
+    notificationPrefs: { enabled: boolean; badgeEnabled: boolean; };
+    reminderSettings: { enabled: boolean; time: string; lastSentDate: string | null; };
+    familyId: string | null;
+    isSyncing: boolean;
 
-    // Profile Actions
-    addProfile: (name: string, avatar: string) => void;
-    updateProfile: (id: string, updates: Partial<Profile>) => void;
-    deleteProfile: (id: string) => void;
-
-    // Chore Actions
-    addChore: (chore: Omit<Chore, 'id' | 'status'>) => void;
-    updateChore: (id: string, updates: Partial<Chore>) => void;
-    deleteChore: (id: string) => void;
-    archiveChore: (id: string) => void;
-
-    // Assignment Actions
-    assignChore: (choreId: string, childId: string) => void;
-    unassignChore: (choreId: string, childId: string) => void;
-    toggleAssignment: (assignmentId: string) => void;
-    approveAssignment: (assignmentId: string) => void;
+    // Actions
+    addProfile: (name: string, avatar: string) => Promise<void>;
+    updateProfile: (id: string, updates: Partial<Profile>) => Promise<void>;
+    deleteProfile: (id: string) => Promise<void>;
+    addChore: (chore: Omit<Chore, 'id' | 'status'>) => Promise<void>;
+    updateChore: (id: string, updates: Partial<Chore>) => Promise<void>;
+    deleteChore: (id: string) => Promise<void>;
+    archiveChore: (id: string) => Promise<void>;
+    assignChore: (choreId: string, childId: string) => Promise<void>;
+    unassignChore: (choreId: string, childId: string) => Promise<void>;
+    toggleAssignment: (assignmentId: string) => Promise<void>;
+    approveAssignment: (assignmentId: string) => Promise<void>;
     refreshAssignments: () => void;
-
-    // Reward Actions
-    addReward: (reward: Omit<Reward, 'id' | 'status'>) => void;
-    archiveReward: (id: string) => void;
-    redeemReward: (rewardId: string, childId: string) => void;
-
-    // Bulk & Seed Actions
-    assignChoresByTag: (tag: string, childIds: string[]) => { added: number, skipped: number };
-    addFromTemplate: (chores: Omit<Chore, 'id' | 'status'>[]) => void;
-    
-    // Premium Actions
+    addReward: (reward: Omit<Reward, 'id' | 'status'>) => Promise<void>;
+    archiveReward: (id: string) => Promise<void>;
+    redeemReward: (rewardId: string, childId: string) => Promise<void>;
+    assignChoresByTag: (tag: string, childIds: string[]) => Promise<{ added: number, skipped: number }>;
+    addFromTemplate: (chores: Omit<Chore, 'id' | 'status'>[]) => Promise<void>;
+    syncWithCloud: (familyId: string) => Promise<void>;
+    setFamilyId: (id: string | null) => void;
     setPremium: (status: boolean) => void;
-
-    // Notification Actions
     setNotificationPrefs: (prefs: Partial<{ enabled: boolean, badgeEnabled: boolean }>) => void;
     updateReminderSettings: (settings: Partial<{ enabled: boolean, time: string, lastSentDate: string | null }>) => void;
-
-    // Auth Actions
     setParentPin: (pin: string) => void;
     setRecoveryInfo: (question: string, answer: string) => void;
-
-    // Data Management Actions
     resetPoints: () => void;
     resetAllData: () => void;
 }
 
 export const useStore = create<StoreState>()(
     persist(
-        (set) => ({
-            profiles: [],
-            chores: [],
-            assignments: [],
-            rewards: [],
-            redemptions: [],
-            isPremium: false,
-            parentPin: '0000',
-            recoveryQuestion: '',
-            recoveryAnswer: '',
-            notificationPrefs: {
-                enabled: false,
-                badgeEnabled: true
-            },
-            reminderSettings: {
-                enabled: true,
-                time: '21:00',
-                lastSentDate: null
-            },
+        (set, get) => ({
+            profiles: [], chores: [], assignments: [], rewards: [], redemptions: [],
+            isPremium: false, parentPin: '0000', recoveryQuestion: '', recoveryAnswer: '',
+            notificationPrefs: { enabled: false, badgeEnabled: true },
+            reminderSettings: { enabled: true, time: '21:00', lastSentDate: null },
+            familyId: null, isSyncing: false,
 
             setPremium: (status) => set({ isPremium: status }),
-
-            setNotificationPrefs: (prefs) => set((state) => ({
-                notificationPrefs: { ...state.notificationPrefs, ...prefs }
-            })),
-
-            updateReminderSettings: (settings) => set((state) => ({
-                reminderSettings: { ...state.reminderSettings, ...settings }
-            })),
-
+            setFamilyId: (id) => set({ familyId: id }),
+            setNotificationPrefs: (prefs) => set((state) => ({ notificationPrefs: { ...state.notificationPrefs, ...prefs } })),
+            updateReminderSettings: (settings) => set((state) => ({ reminderSettings: { ...state.reminderSettings, ...settings } })),
             setParentPin: (pin: string) => set({ parentPin: pin }),
+            setRecoveryInfo: (question, answer) => set({ recoveryQuestion: question, recoveryAnswer: answer.toLowerCase().trim() }),
 
-            setRecoveryInfo: (question: string, answer: string) => set({ 
-                recoveryQuestion: question, 
-                recoveryAnswer: answer.toLowerCase().trim() 
-            }),
+            syncWithCloud: async (familyId: string) => {
+                set({ isSyncing: true, familyId });
+                try {
+                    // Optimized fetching: only get active data where relevant
+                    const [p, c, a, r, rd] = await Promise.all([
+                        supabase.from('profiles').select('*').eq('family_id', familyId),
+                        supabase.from('chores').select('*').eq('family_id', familyId),
+                        supabase.from('assignments').select('*').eq('family_id', familyId),
+                        supabase.from('rewards').select('*').eq('family_id', familyId),
+                        supabase.from('redemptions').select('*').eq('family_id', familyId),
+                    ]);
+                    set({
+                        profiles: p.data || [],
+                        chores: (c.data || []).map(Mappers.chore),
+                        assignments: (a.data || []).map(Mappers.assignment),
+                        rewards: r.data || [],
+                        redemptions: (rd.data || []).map(Mappers.redemption),
+                    });
+                } catch (error) { console.error('Cloud Sync Error:', error); } finally { set({ isSyncing: false }); }
+            },
 
             resetPoints: () => set((state) => ({
                 profiles: state.profiles.map(p => ({ ...p, points: 0, xp: 0, level: 1 })),
@@ -130,329 +103,246 @@ export const useStore = create<StoreState>()(
                 redemptions: []
             })),
 
-            resetAllData: () => set({
-                profiles: [],
-                chores: [],
-                assignments: [],
-                rewards: [],
-                redemptions: [],
-                isPremium: false
-            }),
+            resetAllData: () => set({ profiles: [], chores: [], assignments: [], rewards: [], redemptions: [], isPremium: false, familyId: null }),
 
-            addProfile: (name, avatar) => set((state) => {
-                if (!state.isPremium && state.profiles.length >= 1) {
-                    alert("Free tier is limited to 1 child profile. Upgrade to Premium for unlimited profiles!");
-                    return state;
+            addProfile: async (name, avatar) => {
+                const { familyId, isPremium, profiles } = get();
+                const result = Validation.profile({ name });
+                if (!result.valid) { alert(result.error); return; }
+                if (!isPremium && profiles.length >= 1) { alert("Free tier limit!"); return; }
+                
+                const newProfile = { id: uuidv4(), name: result.data!.name, avatar, points: 0, xp: 0, level: 1 };
+                set({ profiles: [...profiles, newProfile] });
+                if (familyId) await supabase.from('profiles').insert({ ...newProfile, family_id: familyId });
+            },
+
+            updateProfile: async (id, updates) => {
+                const { familyId, profiles } = get();
+                if (updates.name) {
+                    const result = Validation.profile({ name: updates.name });
+                    if (!result.valid) { alert(result.error); return; }
+                    updates.name = result.data!.name;
                 }
-                return {
-                    profiles: [...state.profiles, {
-                        id: uuidv4(),
-                        name,
-                        avatar,
-                        points: 0,
-                        xp: 0,
-                        level: 1
-                    }]
-                };
-            }),
+                set({ profiles: profiles.map((p) => p.id === id ? { ...p, ...updates } : p) });
+                if (familyId) await supabase.from('profiles').update(updates).eq('id', id);
+            },
 
-            updateProfile: (id, updates) => set((state) => ({
-                profiles: state.profiles.map((p) => p.id === id ? { ...p, ...updates } : p)
-            })),
+            deleteProfile: async (id) => {
+                const { familyId, profiles, assignments, redemptions } = get();
+                set({ profiles: profiles.filter((p) => p.id !== id), assignments: assignments.filter((a) => a.childId !== id), redemptions: redemptions.filter((r) => r.childId !== id) });
+                if (familyId) await supabase.from('profiles').delete().eq('id', id);
+            },
 
-            deleteProfile: (id) => set((state) => ({
-                profiles: state.profiles.filter((p) => p.id !== id),
-                assignments: state.assignments.filter((a) => a.childId !== id),
-                redemptions: state.redemptions.filter((r) => r.childId !== id)
-            })),
+            addChore: async (chore) => {
+                const { familyId, isPremium, chores } = get();
+                const result = Validation.chore(chore);
+                if (!result.valid) { alert(result.error); return; }
+                
+                const active = chores.filter(c => c.status === 'active');
+                if (active.some(c => c.title.toLowerCase() === result.data!.title.toLowerCase())) { alert("Chore exists!"); return; }
+                if (!isPremium && active.length >= 5) { alert("Free tier limit!"); return; }
 
-            addChore: (chore) => set((state) => {
-                const activeChores = state.chores.filter(c => c.status === 'active');
-                if (activeChores.some(c => c.title.toLowerCase() === chore.title.toLowerCase())) {
-                    alert(`A chore with the title "${chore.title}" already exists!`);
-                    return state;
+                const newChore = { ...chore, title: result.data!.title, points: result.data!.points, id: uuidv4(), status: 'active' as const };
+                set({ chores: [...chores, newChore] });
+                if (familyId) {
+                    await supabase.from('chores').insert({
+                        id: newChore.id, family_id: familyId, title: newChore.title, points: newChore.points,
+                        frequency: newChore.frequency, requires_approval: newChore.requiresApproval,
+                        icon: newChore.icon, tags: newChore.tags, status: newChore.status
+                    });
                 }
-                if (!state.isPremium && activeChores.length >= 5) {
-                    alert("Free tier is limited to 5 active chores. Upgrade to Premium for unlimited chores!");
-                    return state;
+            },
+
+            updateChore: async (id, updates) => {
+                const { familyId, chores } = get();
+                if (updates.title || updates.points !== undefined) {
+                    const chore = chores.find(c => c.id === id);
+                    const result = Validation.chore({ 
+                        title: updates.title || chore?.title || '', 
+                        points: updates.points !== undefined ? updates.points : (chore?.points || 0) 
+                    });
+                    if (!result.valid) { alert(result.error); return; }
+                    updates.title = result.data!.title;
+                    updates.points = result.data!.points;
                 }
-                return {
-                    chores: [...state.chores, { ...chore, id: uuidv4(), status: 'active' }]
-                };
-            }),
-
-            updateChore: (id, updates) => set((state) => {
-                if (updates.title) {
-                    const duplicate = state.chores.some(c => 
-                        c.id !== id && 
-                        c.status === 'active' && 
-                        c.title.toLowerCase() === updates.title?.toLowerCase()
-                    );
-                    if (duplicate) {
-                        alert(`Another active chore with the title "${updates.title}" already exists!`);
-                        return state;
-                    }
+                set({ chores: chores.map((c) => c.id === id ? { ...c, ...updates } : c) });
+                if (familyId) {
+                    const dbUpdates: any = { ...updates };
+                    if (updates.requiresApproval !== undefined) { dbUpdates.requires_approval = updates.requiresApproval; delete dbUpdates.requiresApproval; }
+                    await supabase.from('chores').update(dbUpdates).eq('id', id);
                 }
-                return {
-                    chores: state.chores.map((c) => c.id === id ? { ...c, ...updates } : c)
-                };
-            }),
+            },
 
-            deleteChore: (id) => set((state) => ({
-                chores: state.chores.filter((c) => c.id !== id),
-                assignments: state.assignments.filter((a) => a.choreId !== id)
-            })),
+            deleteChore: async (id) => {
+                const { familyId, chores, assignments } = get();
+                set({ chores: chores.filter((c) => c.id !== id), assignments: assignments.filter((a) => a.choreId !== id) });
+                if (familyId) await supabase.from('chores').delete().eq('id', id);
+            },
 
-            archiveChore: (id) => set((state) => ({
-                chores: state.chores.map((c) => c.id === id ? { ...c, status: 'archived' } : c)
-            })),
+            archiveChore: async (id) => {
+                const { familyId, chores } = get();
+                set({ chores: chores.map((c) => c.id === id ? { ...c, status: 'archived' } : c) });
+                if (familyId) await supabase.from('chores').update({ status: 'archived' }).eq('id', id);
+            },
 
-            assignChore: (choreId, childId) => set((state) => {
-                const chore = state.chores.find(c => c.id === choreId);
-                const profile = state.profiles.find(p => p.id === childId);
-                if (!chore) return state;
-
-                const now = new Date();
-                const todayStr = now.toISOString().split('T')[0];
-                const alreadyAssigned = state.assignments.some(a => {
-                    const existingChore = state.chores.find(c => c.id === a.choreId);
-                    if (!existingChore || a.childId !== childId) return false;
-                    const isSameQuest = a.choreId === choreId || (existingChore.title.toLowerCase() === chore.title.toLowerCase() && !a.completed);
-                    if (!isSameQuest) return false;
-                    if (!a.completed) return true;
-                    const compDate = (a.completedAt || a.createdAt || '').split('T')[0];
-                    if (chore.frequency === 'daily') return compDate === todayStr;
-                    if (chore.frequency === 'weekly') {
-                        const currentMonday = new Date(now);
-                        currentMonday.setDate(now.getDate() - (now.getDay() === 0 ? 6 : now.getDay() - 1));
-                        const weekStr = currentMonday.toISOString().split('T')[0];
-                        const lastCompDate = new Date(a.completedAt || a.createdAt || '');
-                        const lastMonday = new Date(lastCompDate);
-                        lastMonday.setDate(lastCompDate.getDate() - (lastCompDate.getDay() === 0 ? 6 : lastCompDate.getDay() - 1));
-                        const lastWeekStr = lastMonday.toISOString().split('T')[0];
-                        return lastWeekStr === weekStr;
-                    }
-                    return false;
-                });
-
-                if (alreadyAssigned) return state;
-
-                if (state.notificationPrefs.enabled) {
+            assignChore: async (choreId, childId) => {
+                const { familyId, chores, assignments, notificationPrefs, profiles } = get();
+                const chore = chores.find(c => c.id === choreId);
+                const profile = profiles.find(p => p.id === childId);
+                if (!chore) return;
+                
+                const newAssignment = { id: uuidv4(), choreId, childId, completed: false, createdAt: new Date().toISOString() };
+                set({ assignments: [...assignments, newAssignment] });
+                
+                if (notificationPrefs.enabled) {
                     NotificationService.sendNotification("New Quest Assigned!", {
                         body: `${profile?.name || 'Child'} has a new quest: ${chore.title}`,
                         tag: `assign-${choreId}-${childId}`
                     });
                 }
 
-                return {
-                    assignments: [...state.assignments, {
-                        id: uuidv4(),
-                        choreId,
-                        childId,
-                        completed: false,
-                        createdAt: now.toISOString()
-                    }]
-                };
-            }),
+                if (familyId) await supabase.from('assignments').insert({ id: newAssignment.id, family_id: familyId, profile_id: childId, chore_id: choreId, completed: false, created_at: newAssignment.createdAt });
+            },
 
-            unassignChore: (choreId, childId) => set((state) => ({
-                assignments: state.assignments.filter(a => 
-                    !(a.choreId === choreId && a.childId === childId && !a.completed)
-                )
-            })),
+            unassignChore: async (choreId, childId) => {
+                const { familyId, assignments } = get();
+                set({ assignments: assignments.filter(a => !(a.choreId === choreId && a.childId === childId && !a.completed)) });
+                if (familyId) await supabase.from('assignments').delete().eq('chore_id', choreId).eq('profile_id', childId).eq('completed', false);
+            },
 
-            toggleAssignment: (id) => set((state) => {
-                const assignment = state.assignments.find((a) => a.id === id);
-                if (!assignment) return state;
-                const chore = state.chores.find((c) => c.id === assignment.choreId);
-                const profile = state.profiles.find(p => p.id === assignment.childId);
-                if (!chore) return state;
-                if (assignment.verifiedAt) return state;
-
-                const isCompleting = !assignment.completed;
+            toggleAssignment: async (id) => {
+                const { familyId, assignments, chores, profiles, notificationPrefs } = get();
+                const a = assignments.find(a => a.id === id);
+                if (!a || a.verifiedAt) return;
+                const c = chores.find(c => c.id === a.choreId);
+                const p_info = profiles.find(p => p.id === a.childId);
+                if (!c) return;
+                const isCompleting = !a.completed;
                 const now = new Date().toISOString();
-
-                if (isCompleting && chore.requiresApproval && state.notificationPrefs.enabled) {
+                
+                if (isCompleting && c.requiresApproval && notificationPrefs.enabled) {
                     NotificationService.sendNotification("Approval Requested", {
-                        body: `${profile?.name || 'Child'} finished: ${chore.title}`,
+                        body: `${p_info?.name || 'Child'} finished: ${c.title}`,
                         tag: `approve-${id}`
                     });
                 }
 
-                if (isCompleting && !chore.requiresApproval) {
-                    const profiles = state.profiles.map(p => {
-                        if (p.id === assignment.childId) {
-                            const newXp = p.xp + chore.points;
-                            return { ...p, points: p.points + chore.points, xp: newXp, level: Math.floor(newXp / 100) + 1 };
-                        }
-                        return p;
-                    });
-                    return {
-                        assignments: state.assignments.map(a => a.id === id ? { ...a, completed: true, completedAt: now } : a),
-                        profiles
-                    };
-                } else if (!isCompleting && !chore.requiresApproval) {
-                    const profiles = state.profiles.map(p => {
-                        if (p.id === assignment.childId) {
-                            const newXp = Math.max(0, p.xp - chore.points);
-                            return { ...p, points: Math.max(0, p.points - chore.points), xp: newXp, level: Math.floor(newXp / 100) + 1 };
-                        }
-                        return p;
-                    });
-                    return {
-                        assignments: state.assignments.map(a => a.id === id ? { ...a, completed: false, completedAt: undefined } : a),
-                        profiles
-                    };
-                }
+                set({ assignments: assignments.map(x => x.id === id ? { ...x, completed: isCompleting, completedAt: isCompleting ? now : undefined } : x) });
+                if (familyId) await supabase.from('assignments').update({ completed: isCompleting, completed_at: isCompleting ? now : null }).eq('id', id);
+            },
 
-                return {
-                    assignments: state.assignments.map(a => a.id === id ? { ...a, completed: isCompleting, completedAt: isCompleting ? now : undefined } : a)
-                };
-            }),
-
-            approveAssignment: (id) => set((state) => {
-                const assignment = state.assignments.find(a => a.id === id);
-                if (!assignment || assignment.verifiedAt) return state;
-                const chore = state.chores.find(c => c.id === assignment.choreId);
-                if (!chore) return state;
-
-                if (state.notificationPrefs.enabled) {
+            approveAssignment: async (id) => {
+                const { familyId, assignments, chores, profiles, notificationPrefs } = get();
+                const a = assignments.find(a => a.id === id);
+                if (!a) return;
+                const c = chores.find(c => c.id === a.choreId);
+                if (!c) return;
+                const verifiedAt = new Date().toISOString();
+                const nextProfiles = profiles.map(p => p.id === a.childId ? { ...p, points: p.points + c.points, xp: p.xp + c.points, level: Math.floor((p.xp + c.points) / 100) + 1 } : p);
+                
+                if (notificationPrefs.enabled) {
                     NotificationService.sendNotification("Quest Verified!", {
-                        body: `Success! ${chore.title} is complete. +${chore.points} XP`,
+                        body: `Success! ${c.title} is complete. +${c.points} XP`,
                         tag: `verified-${id}`
                     });
                 }
 
-                return {
-                    assignments: state.assignments.map(a => a.id === id ? { ...a, verifiedAt: new Date().toISOString() } : a),
-                    profiles: state.profiles.map(p => {
-                        if (p.id === assignment.childId) {
-                            return { ...p, points: p.points + chore.points, xp: p.xp + chore.points };
-                        }
-                        return p;
-                    })
-                };
-            }),
+                set({ assignments: assignments.map(x => x.id === id ? { ...x, verifiedAt } : x), profiles: nextProfiles });
+                if (familyId) {
+                    await supabase.from('assignments').update({ verified_at: verifiedAt }).eq('id', id);
+                    const p = nextProfiles.find(p => p.id === a.childId);
+                    if (p) await supabase.from('profiles').update({ points: p.points, xp: p.xp, level: p.level }).eq('id', p.id);
+                }
+            },
 
-            refreshAssignments: () => set((state) => {
-                const now = new Date();
-                const todayStr = now.toISOString().split('T')[0];
-                const currentMonday = new Date(now);
-                currentMonday.setDate(now.getDate() - (now.getDay() === 0 ? 6 : now.getDay() - 1));
-                const weekStr = currentMonday.toISOString().split('T')[0];
+            refreshAssignments: () => {
+                const { assignments, chores, profiles, familyId } = get();
+                const todayStr = new Date().toISOString().split('T')[0];
                 const newAssignments: Assignment[] = [];
-
-                state.profiles.forEach(profile => {
-                    state.chores.filter(c => c.status === 'active' && c.frequency !== 'one-time').forEach(chore => {
-                        const hasActive = state.assignments.some(a => a.choreId === chore.id && a.childId === profile.id && !a.completed);
-                        if (!hasActive) {
-                            const lastComp = state.assignments
-                                .filter(a => a.choreId === chore.id && a.childId === profile.id && a.completed)
-                                .sort((a, b) => (b.completedAt || b.createdAt || '').localeCompare(a.completedAt || a.createdAt || ''))[0];
-
-                            if (lastComp) {
-                                const lastDate = (lastComp.completedAt || lastComp.createdAt || '').split('T')[0];
-                                let shouldReassign = false;
-                                if (chore.frequency === 'daily' && lastDate < todayStr) shouldReassign = true;
-                                else if (chore.frequency === 'weekly') {
-                                    const lastCompDate = new Date(lastComp.completedAt || lastComp.createdAt || '');
-                                    const lastMon = new Date(lastCompDate);
-                                    lastMon.setDate(lastCompDate.getDate() - (lastCompDate.getDay() === 0 ? 6 : lastCompDate.getDay() - 1));
-                                    if (lastMon.toISOString().split('T')[0] < weekStr) shouldReassign = true;
-                                }
-                                if (shouldReassign) {
-                                    newAssignments.push({ id: uuidv4(), choreId: chore.id, childId: profile.id, completed: false, createdAt: now.toISOString() });
-                                }
+                profiles.forEach(profile => {
+                    chores.filter(c => c.status === 'active' && c.frequency !== 'one-time').forEach(chore => {
+                        const active = assignments.some(a => a.choreId === chore.id && a.childId === profile.id && !a.completed);
+                        if (!active) {
+                            const last = assignments.filter(a => a.choreId === chore.id && a.childId === profile.id && a.completed).sort((a, b) => (b.completedAt || '').localeCompare(a.completedAt || ''))[0];
+                            if (last && (last.completedAt || '').split('T')[0] < todayStr) {
+                                newAssignments.push({ id: uuidv4(), choreId: chore.id, childId: profile.id, completed: false, createdAt: new Date().toISOString() });
                             }
                         }
                     });
                 });
-                if (newAssignments.length === 0) return state;
-                return { assignments: [...state.assignments, ...newAssignments] };
-            }),
-
-            addReward: (reward) => set((state) => {
-                if (!state.isPremium && state.rewards.length >= 3) {
-                    alert("Free tier is limited to 3 rewards. Upgrade to Premium for unlimited rewards!");
-                    return state;
-                }
-                return { rewards: [...state.rewards, { ...reward, id: uuidv4(), status: 'active' }] };
-            }),
-
-            archiveReward: (id) => set((state) => ({
-                rewards: state.rewards.map((r) => r.id === id ? { ...r, status: 'archived' } : r)
-            })),
-
-            redeemReward: (rewardId, childId) => set((state) => {
-                const reward = state.rewards.find(r => r.id === rewardId);
-                const profile = state.profiles.find(p => p.id === childId);
-                if (!reward || !profile || profile.points < reward.cost) return state;
-                return {
-                    profiles: state.profiles.map(p => p.id === childId ? { ...p, points: p.points - reward.cost } : p),
-                    redemptions: [...state.redemptions, { id: uuidv4(), rewardId, childId, redeemedAt: new Date().toISOString(), approved: false }]
-                };
-            }),
-
-            assignChoresByTag: (tag, childIds) => {
-                let added = 0; let skipped = 0;
-                const newAssignments: Assignment[] = [];
-                set((state) => {
-                    const choresToAssign = state.chores.filter(c => c.tags?.includes(tag) && c.status === 'active');
-                    if (choresToAssign.length === 0) return state;
-                    const now = new Date();
-                    const todayStr = now.toISOString().split('T')[0];
-                    childIds.forEach(childId => {
-                        choresToAssign.forEach(chore => {
-                            const alreadyAssigned = state.assignments.some(a => {
-                                if (a.childId !== childId) return false;
-                                const existingChore = state.chores.find(c => c.id === a.choreId);
-                                if (!existingChore) return false;
-                                const isSameQuest = a.choreId === chore.id || (existingChore.title.toLowerCase() === chore.title.toLowerCase() && !a.completed);
-                                if (!isSameQuest) return false;
-                                if (!a.completed) return true;
-                                const compDate = (a.completedAt || a.createdAt || '').split('T')[0];
-                                if (chore.frequency === 'daily') return compDate === todayStr;
-                                if (chore.frequency === 'weekly') {
-                                    const currentMonday = new Date(now);
-                                    currentMonday.setDate(now.getDate() - (now.getDay() === 0 ? 6 : now.getDay() - 1));
-                                    const lastCompDate = new Date(a.completedAt || a.createdAt || '');
-                                    const lastMon = new Date(lastCompDate);
-                                    lastMon.setDate(lastCompDate.getDate() - (lastCompDate.getDay() === 0 ? 6 : lastCompDate.getDay() - 1));
-                                    return lastMon.toISOString().split('T')[0] === currentMonday.toISOString().split('T')[0];
-                                }
-                                return false;
-                            });
-                            if (!alreadyAssigned) {
-                                newAssignments.push({ id: uuidv4(), choreId: chore.id, childId, completed: false, createdAt: now.toISOString() });
-                                added++;
-                            } else skipped++;
-                        });
-                    });
-                    if (newAssignments.length === 0) return state;
-                    return { assignments: [...state.assignments, ...newAssignments] };
-                });
-                return { added, skipped };
-            },
-
-            addFromTemplate: (templateChores) => set((state) => {
-                const activeChoresCount = state.chores.filter(c => c.status === 'active').length;
-                const existingActiveTitles = new Set(state.chores.filter(c => c.status === 'active').map(c => c.title));
-                let newChores = templateChores.filter(p => !existingActiveTitles.has(p.title));
-                if (newChores.length === 0) { alert("All chores in this template are already in your bank!"); return state; }
-                if (!state.isPremium) {
-                    const remainingSlots = Math.max(0, 5 - activeChoresCount);
-                    if (newChores.length > remainingSlots) {
-                        alert(`This template includes ${newChores.length} new chores, but you only have ${remainingSlots} slots remaining in the free tier. Upgrade to Premium for unlimited chores!`);
-                        return state;
+                if (newAssignments.length > 0) {
+                    set({ assignments: [...assignments, ...newAssignments] });
+                    if (familyId) {
+                        supabase.from('assignments').insert(newAssignments.map(a => ({
+                            id: a.id, family_id: familyId, profile_id: a.childId, chore_id: a.choreId,
+                            completed: false, created_at: a.createdAt
+                        }))).then();
                     }
                 }
-                const choresWithIds = newChores.map(p => ({ id: uuidv4(), ...p, status: 'active' as const }));
-                return { chores: [...state.chores, ...choresWithIds] };
-            })
+            },
+
+            addReward: async (reward) => {
+                const { familyId, rewards, isPremium } = get();
+                const result = Validation.reward(reward);
+                if (!result.valid) { alert(result.error); return; }
+                if (!isPremium && rewards.length >= 3) { alert("Free tier limit!"); return; }
+                
+                const newReward = { ...reward, title: result.data!.title, cost: result.data!.cost, id: uuidv4(), status: 'active' as const };
+                set({ rewards: [...rewards, newReward] });
+                if (familyId) await supabase.from('rewards').insert({ ...newReward, family_id: familyId });
+            },
+
+            archiveReward: async (id) => {
+                const { familyId, rewards } = get();
+                set({ rewards: rewards.map(r => r.id === id ? { ...r, status: 'archived' } : r) });
+                if (familyId) await supabase.from('rewards').update({ status: 'archived' }).eq('id', id);
+            },
+
+            redeemReward: async (rewardId, childId) => {
+                const { familyId, rewards, profiles, redemptions } = get();
+                const reward = rewards.find(r => r.id === rewardId);
+                const profile = profiles.find(p => p.id === childId);
+                if (!reward || !profile || profile.points < reward.cost) return;
+                const newRedemption = { id: uuidv4(), rewardId, childId, redeemedAt: new Date().toISOString(), approved: false };
+                const nextProfiles = profiles.map(p => p.id === childId ? { ...p, points: p.points - reward.cost } : p);
+                set({ profiles: nextProfiles, redemptions: [...redemptions, newRedemption] });
+                if (familyId) {
+                    await supabase.from('redemptions').insert({ id: newRedemption.id, family_id: familyId, reward_id: rewardId, profile_id: childId, redeemed_at: newRedemption.redeemedAt, approved: false });
+                    const p = nextProfiles.find(p => p.id === childId);
+                    if (p) await supabase.from('profiles').update({ points: p.points }).eq('id', p.id);
+                }
+            },
+
+            assignChoresByTag: async (tag, childIds) => {
+                const { familyId, chores, assignments } = get();
+                let added = 0;
+                const newAssignments: Assignment[] = [];
+                const toAssign = chores.filter(c => c.tags?.includes(tag) && c.status === 'active');
+                childIds.forEach(childId => {
+                    toAssign.forEach(chore => {
+                        if (!assignments.some(a => a.choreId === chore.id && a.childId === childId && !a.completed)) {
+                            newAssignments.push({ id: uuidv4(), choreId: chore.id, childId, completed: false, createdAt: new Date().toISOString() });
+                            added++;
+                        }
+                    });
+                });
+                if (newAssignments.length > 0) {
+                    set({ assignments: [...assignments, ...newAssignments] });
+                    if (familyId) await supabase.from('assignments').insert(newAssignments.map(a => ({ id: a.id, family_id: familyId, profile_id: a.childId, chore_id: a.choreId, completed: false, created_at: a.createdAt })));
+                }
+                return { added, skipped: (toAssign.length * childIds.length) - added };
+            },
+
+            addFromTemplate: async (templateChores) => {
+                const { familyId, chores } = get();
+                const choresWithIds = templateChores.map(c => ({ ...c, id: uuidv4(), status: 'active' as const }));
+                set({ chores: [...chores, ...choresWithIds] });
+                if (familyId) await supabase.from('chores').insert(choresWithIds.map(c => ({
+                    id: c.id, family_id: familyId, title: c.title, points: c.points, frequency: c.frequency,
+                    requires_approval: c.requiresApproval, icon: c.icon, tags: c.tags, status: c.status
+                })));
+            }
         }),
-        {
-            name: 'chore-quest-storage',
-            storage: createJSONStorage(() => storage),
-        }
+        { name: 'chore-quest-storage', storage: createJSONStorage(() => storage) }
     )
 );
