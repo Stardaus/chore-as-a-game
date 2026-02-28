@@ -40,7 +40,7 @@ The application state is managed in `src/store/useStore.ts` using Zustand with p
   - `toggleAssignment`: Marks a chore as complete. Awards points immediately if no approval is required.
   - `approveAssignment`: Finalizes a chore and awards points (Parent only).
 - **Rewards**: `addReward`, `archiveReward`, `redeemReward` (Deducts points and logs transaction).
-- **Bulk Operations**: `assignChoresByTag` and `seedDefaultChores`.
+- **Bulk Operations**: `assignChoresByTag` and `addFromTemplate`.
 
 ---
 

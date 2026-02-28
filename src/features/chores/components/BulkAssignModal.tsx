@@ -37,7 +37,16 @@ export function BulkAssignModal({ isOpen, onClose }: BulkAssignModalProps) {
 
     const handleAssign = () => {
         if (!selectedTag || selectedChildren.length === 0) return;
-        assignChoresByTag(selectedTag, selectedChildren);
+        const { added, skipped } = assignChoresByTag(selectedTag, selectedChildren);
+        
+        if (added > 0) {
+            alert(`Successfully assigned ${added} quests!${skipped > 0 ? ` (${skipped} were already assigned)` : ''}`);
+        } else if (skipped > 0) {
+            alert(`All selected quests were already assigned to these children.`);
+        } else {
+            alert(`No active chores found with the tag #${selectedTag}.`);
+        }
+
         onClose();
         setSelectedTag('');
         setSelectedChildren([]);

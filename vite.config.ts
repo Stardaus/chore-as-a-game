@@ -7,13 +7,18 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
+      registerType: 'prompt',
+      includeAssets: ['apple-touch-icon.png'],
       manifest: {
         name: 'ChoreQuest',
         short_name: 'ChoreQuest',
         description: 'Gamified chore management for families',
         theme_color: '#4f46e5',
+        background_color: '#f8fafc',
+        display: 'standalone',
+        start_url: '/',
+        orientation: 'portrait',
+        categories: ['lifestyle', 'games', 'education'],
         icons: [
           {
             src: 'pwa-192x192.png',
@@ -37,9 +42,19 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
         maximumFileSizeToCacheInBytes: 10 * 1024 * 1024, // 10MB
         cleanupOutdatedCaches: true,
-        skipWaiting: true,
-        clientsClaim: true,
       }
     })
   ],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          'vendor-utils': ['zustand', 'idb-keyval', 'uuid', 'date-fns', 'canvas-confetti'],
+          'vendor-icons': ['lucide-react'],
+        }
+      }
+    },
+    chunkSizeWarningLimit: 1000,
+  }
 })

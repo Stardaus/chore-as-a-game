@@ -3,7 +3,8 @@ import { Modal } from '../../../components/ui/Modal';
 import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
 import { useStore } from '../../../store';
-import { Check, Star, Lock, Trash2, RefreshCcw, AlertTriangle, Key } from 'lucide-react';
+import { Check, Star, Lock, Trash2, RefreshCcw, AlertTriangle, Key, Bell, Moon } from 'lucide-react';
+import { cn } from '../../../lib/utils';
 
 interface SettingsModalProps {
     isOpen: boolean;
@@ -13,7 +14,9 @@ interface SettingsModalProps {
 export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     const { 
         isPremium, setPremium, resetPoints, resetAllData, 
-        parentPin, setParentPin, recoveryQuestion, recoveryAnswer, setRecoveryInfo 
+        parentPin, setParentPin, recoveryQuestion, recoveryAnswer, setRecoveryInfo,
+        notificationPrefs, setNotificationPrefs,
+        reminderSettings, updateReminderSettings
     } = useStore();
     
     const [newPin, setNewPin] = useState(parentPin);
@@ -21,8 +24,6 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     const [answer, setAnswer] = useState(recoveryAnswer);
 
     const handleUpgrade = () => {
-        // In a real app, this would trigger a payment flow.
-        // For this demo, we just toggle the state.
         if (confirm("Confirm upgrade to Premium? (Simulated Payment)")) {
             setPremium(true);
         }
@@ -62,6 +63,24 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         }
     };
 
+    const handleToggleNotifications = async () => {
+        if (!notificationPrefs.enabled) {
+            if (!("Notification" in window)) {
+                alert("This browser does not support desktop notifications");
+                return;
+            }
+
+            const permission = await Notification.requestPermission();
+            if (permission === "granted") {
+                setNotificationPrefs({ enabled: true });
+            } else {
+                alert("Permission denied. Please enable notifications in your browser settings to use this feature.");
+            }
+        } else {
+            setNotificationPrefs({ enabled: false });
+        }
+    };
+
     return (
         <Modal isOpen={isOpen} onClose={onClose} title="Settings">
             <div className="space-y-6 overflow-y-auto max-h-[70vh] pr-2 hidden-scrollbar">
@@ -82,22 +101,11 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
                     {!isPremium ? (
                         <div className="space-y-3">
-                            <p className="text-sm text-slate-600">
-                                Unlock the full potential of ChoreQuest!
-                            </p>
+                            <p className="text-sm text-slate-600">Unlock the full potential of ChoreQuest!</p>
                             <ul className="space-y-2 text-sm text-slate-700">
-                                <li className="flex items-center gap-2">
-                                    <Lock className="h-4 w-4 text-slate-400" />
-                                    <span>Limited to 1 Child Profile</span>
-                                </li>
-                                <li className="flex items-center gap-2">
-                                    <Lock className="h-4 w-4 text-slate-400" />
-                                    <span>Limited to 5 Chore Types</span>
-                                </li>
-                                <li className="flex items-center gap-2">
-                                    <Lock className="h-4 w-4 text-slate-400" />
-                                    <span>Limited to 3 Rewards</span>
-                                </li>
+                                <li className="flex items-center gap-2"><Lock className="h-4 w-4 text-slate-400" /> <span>Limited to 1 Child Profile</span></li>
+                                <li className="flex items-center gap-2"><Lock className="h-4 w-4 text-slate-400" /> <span>Limited to 5 Chore Types</span></li>
+                                <li className="flex items-center gap-2"><Lock className="h-4 w-4 text-slate-400" /> <span>Limited to 3 Rewards</span></li>
                             </ul>
                             <Button className="w-full mt-4 bg-indigo-600 hover:bg-indigo-700 text-white" onClick={handleUpgrade}>
                                 Upgrade for Unlimited Access
@@ -105,28 +113,99 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                         </div>
                     ) : (
                         <div className="space-y-3">
-                            <p className="text-sm text-slate-600">
-                                You have unlimited access to all features.
-                            </p>
+                            <p className="text-sm text-slate-600">You have unlimited access to all features.</p>
                             <ul className="space-y-2 text-sm text-indigo-900">
-                                <li className="flex items-center gap-2">
-                                    <Check className="h-4 w-4 text-indigo-600" />
-                                    <span>Unlimited Child Profiles</span>
-                                </li>
-                                <li className="flex items-center gap-2">
-                                    <Check className="h-4 w-4 text-indigo-600" />
-                                    <span>Unlimited Chore Creation</span>
-                                </li>
-                                <li className="flex items-center gap-2">
-                                    <Check className="h-4 w-4 text-indigo-600" />
-                                    <span>Unlimited Rewards</span>
-                                </li>
+                                <li className="flex items-center gap-2"><Check className="h-4 w-4 text-indigo-600" /> <span>Unlimited Child Profiles</span></li>
+                                <li className="flex items-center gap-2"><Check className="h-4 w-4 text-indigo-600" /> <span>Unlimited Chore Creation</span></li>
+                                <li className="flex items-center gap-2"><Check className="h-4 w-4 text-indigo-600" /> <span>Unlimited Rewards</span></li>
                             </ul>
                             <Button variant="outline" className="w-full mt-4 text-red-600 border-red-200 hover:bg-red-50" onClick={handleDowngrade}>
                                 Cancel Premium (Dev Only)
                             </Button>
                         </div>
                     )}
+                </div>
+
+                {/* Notifications Section */}
+                <div className="space-y-4 pt-4 border-t border-slate-100">
+                    <h4 className="font-semibold text-slate-900 flex items-center gap-2">
+                        <Bell className="h-4 w-4 text-indigo-500" />
+                        Engagement & Alerts
+                    </h4>
+                    
+                    <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+                        <div className="flex flex-col text-left">
+                            <span className="text-sm font-bold text-slate-700">App Notifications</span>
+                            <span className="text-[10px] text-slate-500">Alerts for new quests and approvals</span>
+                        </div>
+                        <button 
+                            onClick={handleToggleNotifications}
+                            className={cn(
+                                "h-6 w-11 rounded-full transition-colors relative flex-shrink-0",
+                                notificationPrefs.enabled ? "bg-indigo-600" : "bg-slate-300"
+                            )}
+                        >
+                            <div className={cn(
+                                "h-4 w-4 rounded-full bg-white absolute top-1 transition-all",
+                                notificationPrefs.enabled ? "left-6" : "left-1"
+                            )} />
+                        </button>
+                    </div>
+
+                    <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+                        <div className="flex flex-col text-left">
+                            <span className="text-sm font-bold text-slate-700">App Icon Badge</span>
+                            <span className="text-[10px] text-slate-500">Show pending tasks on home screen icon</span>
+                        </div>
+                        <button 
+                            onClick={() => setNotificationPrefs({ badgeEnabled: !notificationPrefs.badgeEnabled })}
+                            className={cn(
+                                "h-6 w-11 rounded-full transition-colors relative flex-shrink-0",
+                                notificationPrefs.badgeEnabled ? "bg-indigo-600" : "bg-slate-300"
+                            )}
+                        >
+                            <div className={cn(
+                                "h-4 w-4 rounded-full bg-white absolute top-1 transition-all",
+                                notificationPrefs.badgeEnabled ? "left-6" : "left-1"
+                            )} />
+                        </button>
+                    </div>
+
+                    {/* Evening Reminder Setting */}
+                    <div className="p-3 bg-indigo-50/50 rounded-xl border border-indigo-100 space-y-3">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <Moon className="h-4 w-4 text-indigo-600" />
+                                <span className="text-sm font-bold text-slate-700">Evening Check-in</span>
+                            </div>
+                            <button 
+                                onClick={() => updateReminderSettings({ enabled: !reminderSettings.enabled })}
+                                className={cn(
+                                    "h-6 w-11 rounded-full transition-colors relative flex-shrink-0",
+                                    reminderSettings.enabled ? "bg-indigo-600" : "bg-slate-300"
+                                )}
+                            >
+                                <div className={cn(
+                                    "h-4 w-4 rounded-full bg-white absolute top-1 transition-all",
+                                    reminderSettings.enabled ? "left-6" : "left-1"
+                                )} />
+                            </button>
+                        </div>
+                        {reminderSettings.enabled && (
+                            <div className="flex items-center justify-between pt-2 border-t border-indigo-100/50">
+                                <span className="text-[10px] font-bold text-indigo-700 uppercase tracking-wider">Reminder Time</span>
+                                <input 
+                                    type="time" 
+                                    value={reminderSettings.time}
+                                    onChange={(e) => updateReminderSettings({ time: e.target.value })}
+                                    className="bg-white border border-indigo-200 rounded px-2 py-1 text-xs font-bold text-indigo-600 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                                />
+                            </div>
+                        )}
+                        <p className="text-[9px] text-slate-500 leading-tight">
+                            Personalized nudge at your chosen time to check on remaining quests.
+                        </p>
+                    </div>
                 </div>
 
                 {/* PIN & Recovery Management */}
@@ -138,27 +217,13 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                     
                     <div className="space-y-2">
                         <label className="text-xs font-medium text-slate-500 uppercase tracking-wider">Dashboard PIN</label>
-                        <Input 
-                            type="password" 
-                            placeholder="New PIN" 
-                            value={newPin} 
-                            onChange={(e) => setNewPin(e.target.value)}
-                        />
+                        <Input type="password" placeholder="New PIN" value={newPin} onChange={(e) => setNewPin(e.target.value)} />
                     </div>
 
                     <div className="space-y-2">
-                        <label className="text-xs font-medium text-slate-500 uppercase tracking-wider">Recovery Question (Optional)</label>
-                        <Input 
-                            placeholder="e.g. My first pet's name?" 
-                            value={question} 
-                            onChange={(e) => setQuestion(e.target.value)}
-                        />
-                        <Input 
-                            placeholder="Your Answer" 
-                            value={answer} 
-                            onChange={(e) => setAnswer(e.target.value)}
-                        />
-                        <p className="text-[10px] text-slate-400">Used if you forget your PIN.</p>
+                        <label className="text-xs font-medium text-slate-500 uppercase tracking-wider">Recovery Question</label>
+                        <Input placeholder="e.g. My first pet's name?" value={question} onChange={(e) => setQuestion(e.target.value)} />
+                        <Input placeholder="Your Answer" value={answer} onChange={(e) => setAnswer(e.target.value)} />
                     </div>
 
                     <Button className="w-full" onClick={handleSaveAuth}>Save Security Settings</Button>
@@ -171,18 +236,14 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                         Data Management
                     </h4>
                     <Button variant="outline" className="w-full justify-start text-slate-600" onClick={handleResetPoints}>
-                        <RefreshCcw className="mr-2 h-4 w-4" />
-                        Reset Points & Progress
+                        <RefreshCcw className="mr-2 h-4 w-4" /> Reset Points & Progress
                     </Button>
                     <Button variant="outline" className="w-full justify-start text-red-600 border-red-200 hover:bg-red-50" onClick={handleResetAll}>
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Delete All Data
+                        <Trash2 className="mr-2 h-4 w-4" /> Delete All Data
                     </Button>
                 </div>
 
-                <div className="text-center text-xs text-slate-400">
-                    ChoreQuest v1.0.0
-                </div>
+                <div className="text-center text-xs text-slate-400">ChoreQuest v1.0.0</div>
             </div>
         </Modal>
     );

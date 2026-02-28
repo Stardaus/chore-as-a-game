@@ -53,7 +53,7 @@ export function ApprovalQueue() {
                                     <span className="font-bold text-slate-900">{profile.name}</span>
                                     <span className="text-slate-400 text-xs">completed</span>
                                 </div>
-                                <h4 className="font-bold text-indigo-600 truncate">{chore.title}</h4>
+                                <h4 className="font-bold text-indigo-600 break-words">{chore.title}</h4>
                                 <div className="flex items-center gap-1 text-xs text-slate-400 mt-1">
                                     <Clock className="h-3 w-3" />
                                     <span>{new Date(assignment.completedAt!).toLocaleString()}</span>
