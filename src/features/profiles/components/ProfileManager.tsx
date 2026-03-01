@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../..
 import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
 import { Modal } from '../../../components/ui/Modal';
-import { Trash2, UserPlus, User, Pencil } from 'lucide-react';
+import { Trash2, UserPlus, Pencil } from 'lucide-react';
 import { AvatarSelector } from '../../avatars/components/AvatarSelector';
 
 export function ProfileManager() {

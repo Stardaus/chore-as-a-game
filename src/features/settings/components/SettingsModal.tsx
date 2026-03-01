@@ -6,6 +6,8 @@ import { useStore } from '../../../store';
 import { Check, Star, Lock, Trash2, RefreshCcw, AlertTriangle, Key, Bell, Moon, Smartphone } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 import { DeviceManager } from '../../auth/components/DeviceManager';
+import { APP_VERSION } from '../../../constants';
+import { useRegisterSW } from 'virtual:pwa-register/react';
 
 interface SettingsModalProps {
     isOpen: boolean;
@@ -19,6 +21,8 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         notificationPrefs, setNotificationPrefs,
         reminderSettings, updateReminderSettings
     } = useStore();
+
+    const { updateServiceWorker } = useRegisterSW();
     
     const [newPin, setNewPin] = useState(parentPin);
     const [question, setQuestion] = useState(recoveryQuestion);
@@ -62,6 +66,21 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
             resetAllData();
             onClose();
         }
+    };
+
+    const handleCheckUpdates = async () => {
+        if (!navigator.onLine) {
+            alert("Please connect to the internet to check for updates.");
+            return;
+        }
+        
+        console.log("Checking for updates...");
+        // This triggers the service worker update flow
+        await updateServiceWorker(true);
+        // Fallback: forced reload if SW didn't trigger it
+        setTimeout(() => {
+            window.location.reload();
+        }, 1000);
     };
 
     const handleToggleNotifications = async () => {
@@ -244,12 +263,19 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                     <Button variant="outline" className="w-full justify-start text-slate-600" onClick={handleResetPoints}>
                         <RefreshCcw className="mr-2 h-4 w-4" /> Reset Points & Progress
                     </Button>
+                    <Button 
+                        variant="outline" 
+                        className="w-full justify-start text-indigo-600 border-indigo-100 hover:bg-indigo-50"
+                        onClick={handleCheckUpdates}
+                    >
+                        <RefreshCcw className="mr-2 h-4 w-4" /> Check for App Updates
+                    </Button>
                     <Button variant="outline" className="w-full justify-start text-red-600 border-red-200 hover:bg-red-50" onClick={handleResetAll}>
                         <Trash2 className="mr-2 h-4 w-4" /> Delete All Data
                     </Button>
                 </div>
 
-                <div className="text-center text-xs text-slate-400">ChoreQuest v1.0.0</div>
+                <div className="text-center text-xs text-slate-400">ChoreQuest {APP_VERSION}</div>
             </div>
         </Modal>
     );

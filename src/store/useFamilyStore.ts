@@ -29,7 +29,7 @@ interface FamilyState {
 /**
  * Store for managing Family-level settings and connected devices.
  */
-export const useFamilyStore = create<FamilyState>((set, get) => ({
+export const useFamilyStore = create<FamilyState>((set) => ({
     family: null,
     devices: [],
     loading: false,

@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { DeviceService } from '../../../services/DeviceService';
 import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../../components/ui/Card';
-import { Users, ArrowLeft, Smartphone, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Users, ArrowLeft, Smartphone, CheckCircle2, AlertCircle, Share } from 'lucide-react';
 import { useAuthStore } from '../../../store/useAuthStore';
+import { Modal } from '../../../components/ui/Modal';
 
 interface JoinFamilyProps {
     onJoined: (familyId: string) => void;
@@ -20,8 +21,20 @@ export function JoinFamily({ onJoined, onBack }: JoinFamilyProps) {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
+    const [showInstallModal, setShowInstallModal] = useState(false);
     
     const { refreshLinkStatus } = useAuthStore();
+
+    // Check if running in Standalone (Installed) mode
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone;
+    const isIOS = /iPhone|iPad|iPod/.test(window.navigator.userAgent);
+
+    useEffect(() => {
+        // Automatically show the helpful modal if on iOS Safari
+        if (isIOS && !isStandalone) {
+            setShowInstallModal(true);
+        }
+    }, [isIOS, isStandalone]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -66,6 +79,52 @@ export function JoinFamily({ onJoined, onBack }: JoinFamilyProps) {
 
     return (
         <div className="min-h-[80vh] flex flex-col items-center justify-center p-4">
+            {/* iOS Installation Education Modal */}
+            <Modal 
+                isOpen={showInstallModal} 
+                onClose={() => setShowInstallModal(false)} 
+                title="Better Experience Required"
+            >
+                <div className="space-y-6 py-4">
+                    <div className="h-20 w-20 bg-indigo-600 text-white rounded-3xl flex items-center justify-center mx-auto shadow-2xl rotate-3">
+                        <Smartphone className="h-10 w-10" />
+                    </div>
+                    
+                    <div className="space-y-2 text-center">
+                        <h3 className="text-xl font-bold text-slate-900">Install to Home Screen</h3>
+                        <p className="text-sm text-slate-500">To keep your device linked and enable offline play, ChoreQuest must be installed as an app.</p>
+                    </div>
+
+                    <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100 space-y-3">
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest text-center">How to Install</p>
+                        <div className="flex items-center gap-4 text-sm text-slate-700">
+                            <div className="h-8 w-8 rounded-full bg-white shadow-sm flex items-center justify-center shrink-0 font-bold text-indigo-600">1</div>
+                            <p>Tap the <span className="font-bold inline-flex items-center gap-1 bg-white px-2 py-0.5 rounded border border-slate-200 shadow-sm text-indigo-600"><Share className="h-3 x-3" /> Share</span> button below</p>
+                        </div>
+                        <div className="flex items-center gap-4 text-sm text-slate-700">
+                            <div className="h-8 w-8 rounded-full bg-white shadow-sm flex items-center justify-center shrink-0 font-bold text-indigo-600">2</div>
+                            <p>Scroll down and tap <span className="font-bold">"Add to Home Screen"</span></p>
+                        </div>
+                    </div>
+
+                    <div className="p-4 rounded-2xl bg-amber-50 border border-amber-100 flex items-start gap-3">
+                        <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+                        <p className="text-[11px] text-amber-800 leading-tight">
+                            <span className="font-bold">Note:</span> If you link now in Safari, the connection will be lost when you install later. It's best to install first!
+                        </p>
+                    </div>
+
+                    <div className="flex flex-col gap-2">
+                        <Button className="w-full bg-indigo-600 font-bold h-12 rounded-xl" onClick={() => setShowInstallModal(false)}>
+                            I understand, continue anyway
+                        </Button>
+                        <Button variant="ghost" className="w-full text-slate-400 text-xs" onClick={onBack}>
+                            Go Back
+                        </Button>
+                    </div>
+                </div>
+            </Modal>
+
             <div className="w-full max-w-md space-y-6">
                 <Button variant="ghost" onClick={onBack} className="text-slate-500 font-bold -ml-2">
                     <ArrowLeft className="h-4 w-4 mr-2" /> Back

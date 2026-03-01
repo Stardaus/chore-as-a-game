@@ -7,7 +7,7 @@ import { ShieldCheck, UserCircle, Users, Smartphone, Sparkles, RefreshCw } from 
 import { useState, useEffect } from 'react';
 import { JoinFamily } from '../features/auth/components/JoinFamily';
 import { get } from 'idb-keyval';
-import { cn } from '../lib/utils';
+import { ConnectionFooter } from '../components/ui/ConnectionFooter';
 
 /**
  * Entry point for all users.
@@ -21,14 +21,15 @@ import { cn } from '../lib/utils';
 export function ProfileSelection() {
     const navigate = useNavigate();
     const { profiles, isSyncing, syncWithCloud } = useStore();
-    const { session } = useAuthStore();
+    const { session, isDeviceLinked } = useAuthStore();
     const [view, setView] = useState<'select' | 'join'>('select');
     const [isLinked, setIsLinked] = useState(false);
 
     useEffect(() => {
         const checkLink = async () => {
             const familyId = await get('linked-family-id');
-            setIsLinked(!!familyId || !!session);
+            const linked = !!familyId || !!session;
+            setIsLinked(linked);
             
             // If linked but profiles empty, try a quick sync
             if (familyId && profiles.length === 0) {
@@ -36,7 +37,7 @@ export function ProfileSelection() {
             }
         };
         checkLink();
-    }, [session, profiles.length, syncWithCloud]);
+    }, [session, profiles.length, syncWithCloud, isDeviceLinked]);
 
     const handleChildSelect = (childId: string) => {
         navigate(`/child/${childId}`);
@@ -50,92 +51,140 @@ export function ProfileSelection() {
         return <JoinFamily onJoined={() => { setView('select'); setIsLinked(true); }} onBack={() => setView('select')} />;
     }
 
+    const showWelcomeView = !isLinked && profiles.length === 0;
+
     return (
-        <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-slate-50">
-            <div className="w-full max-w-md space-y-10">
+        <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-slate-50 relative overflow-hidden">
+            {/* Background elements for visual flair */}
+            <div className="absolute top-[-10%] right-[-10%] w-64 h-64 bg-indigo-100/50 rounded-full blur-3xl" />
+            <div className="absolute bottom-[-10%] left-[-10%] w-64 h-64 bg-amber-100/50 rounded-full blur-3xl" />
+
+            <div className="w-full max-w-md space-y-10 relative z-10">
                 {/* App Branding */}
                 <div className="text-center space-y-2">
                     <div className="inline-flex h-20 w-20 items-center justify-center rounded-[2rem] bg-indigo-600 text-white shadow-2xl shadow-indigo-200 mb-2 rotate-3 transform hover:rotate-0 transition-transform cursor-default">
                         <Sparkles className="h-10 w-10 fill-current" />
                     </div>
                     <h1 className="text-4xl font-black text-slate-900 tracking-tighter">ChoreQuest</h1>
-                    <p className="text-slate-500 font-medium italic">Who is playing today?</p>
+                    <p className="text-slate-500 font-medium italic">
+                        {showWelcomeView ? 'Start your adventure!' : 'Who is playing today?'}
+                    </p>
                 </div>
 
-                {/* Profiles Grid */}
-                <div className="grid grid-cols-2 gap-6 relative">
-                    {isSyncing && profiles.length === 0 && (
-                        <div className="absolute inset-0 flex items-center justify-center bg-slate-50/80 z-10 rounded-3xl backdrop-blur-sm">
-                            <RefreshCw className="h-8 w-8 text-indigo-600 animate-spin" />
-                        </div>
-                    )}
+                {showWelcomeView ? (
+                    /* Empty/Unlinked Welcome View */
+                    <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                        <Card className="border-2 border-indigo-100 shadow-xl rounded-[2.5rem] overflow-hidden">
+                            <CardContent className="p-8 space-y-6">
+                                <div className="space-y-2 text-center">
+                                    <h3 className="text-xl font-bold text-slate-900">Welcome to the Family!</h3>
+                                    <p className="text-sm text-slate-500">How would you like to start using ChoreQuest on this device?</p>
+                                </div>
+                                
+                                <div className="grid gap-3">
+                                    <Button 
+                                        onClick={handleParentSelect}
+                                        className="h-16 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold flex items-center justify-between px-6"
+                                    >
+                                        <div className="flex items-center gap-3 text-left">
+                                            <ShieldCheck className="h-6 w-6" />
+                                            <div>
+                                                <div className="text-sm">Create New Family</div>
+                                                <div className="text-[10px] opacity-70 font-normal">Setup this device as the Hub</div>
+                                            </div>
+                                        </div>
+                                    </Button>
 
-                    {/* Parent Profile */}
-                    <button 
-                        onClick={handleParentSelect}
-                        className="group flex flex-col items-center space-y-3 transition-all"
-                    >
-                        <div className="relative">
-                            <div className="h-28 w-28 rounded-[2.5rem] bg-indigo-600 flex items-center justify-center text-white shadow-lg group-hover:shadow-indigo-200 group-hover:scale-105 transition-all outline outline-0 outline-indigo-200 group-hover:outline-8">
-                                <ShieldCheck className="h-12 w-12" />
+                                    <Button 
+                                        variant="outline"
+                                        onClick={() => setView('join')}
+                                        className="h-16 rounded-2xl border-2 border-amber-100 bg-amber-50/30 hover:bg-amber-50 text-amber-900 font-bold flex items-center justify-between px-6 transition-all"
+                                    >
+                                        <div className="flex items-center gap-3 text-left">
+                                            <Users className="h-6 w-6" />
+                                            <div>
+                                                <div className="text-sm">Join Existing Family</div>
+                                                <div className="text-[10px] text-amber-700/70 font-normal">Link to a parent's account</div>
+                                            </div>
+                                        </div>
+                                    </Button>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </div>
+                ) : (
+                    /* Profiles Grid */
+                    <div className="grid grid-cols-2 gap-6 relative">
+                        {isSyncing && profiles.length === 0 && (
+                            <div className="absolute inset-0 flex items-center justify-center bg-slate-50/80 z-10 rounded-3xl backdrop-blur-sm">
+                                <RefreshCw className="h-8 w-8 text-indigo-600 animate-spin" />
                             </div>
-                            <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-1.5 shadow-md">
-                                <UserCircle className="h-5 w-5 text-indigo-600" />
-                            </div>
-                        </div>
-                        <span className="font-bold text-slate-700 group-hover:text-indigo-600 transition-colors">Parent Hub</span>
-                    </button>
+                        )}
 
-                    {/* Child Profiles */}
-                    {profiles.map((profile) => (
-                        <button
-                            key={profile.id}
-                            onClick={() => handleChildSelect(profile.id)}
-                            className="group flex flex-col items-center space-y-3 transition-all animate-in fade-in zoom-in duration-300"
+                        {/* Parent Profile */}
+                        <button 
+                            onClick={handleParentSelect}
+                            className="group flex flex-col items-center space-y-3 transition-all"
                         >
                             <div className="relative">
-                                <div className="h-28 w-28 rounded-[2.5rem] bg-white border-2 border-slate-100 overflow-hidden shadow-sm group-hover:shadow-indigo-100 group-hover:border-indigo-200 group-hover:scale-105 transition-all outline outline-0 outline-indigo-50 group-hover:outline-8">
-                                    <img 
-                                        src={profile.avatar} 
-                                        alt={profile.name} 
-                                        className="h-full w-full object-cover grayscale-[0.2] group-hover:grayscale-0"
-                                    />
+                                <div className="h-28 w-28 rounded-[2.5rem] bg-indigo-600 flex items-center justify-center text-white shadow-lg group-hover:shadow-indigo-200 group-hover:scale-105 transition-all outline outline-0 outline-indigo-200 group-hover:outline-8">
+                                    <ShieldCheck className="h-12 w-12" />
+                                </div>
+                                <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-1.5 shadow-md">
+                                    <UserCircle className="h-5 w-5 text-indigo-600" />
                                 </div>
                             </div>
-                            <span className="font-bold text-slate-700 group-hover:text-indigo-600 transition-colors">{profile.name}</span>
+                            <span className="font-bold text-slate-700 group-hover:text-indigo-600 transition-colors">Parent Hub</span>
                         </button>
-                    ))}
-                </div>
 
-                {/* Secondary Actions */}
-                {!isLinked && (
+                        {/* Child Profiles */}
+                        {profiles.map((profile) => (
+                            <button
+                                key={profile.id}
+                                onClick={() => handleChildSelect(profile.id)}
+                                className="group flex flex-col items-center space-y-3 transition-all animate-in fade-in zoom-in duration-300"
+                            >
+                                <div className="relative">
+                                    <div className="h-28 w-28 rounded-[2.5rem] bg-white border-2 border-slate-100 overflow-hidden shadow-sm group-hover:shadow-indigo-100 group-hover:border-indigo-200 group-hover:scale-105 transition-all outline outline-0 outline-indigo-50 group-hover:outline-8">
+                                        <img 
+                                            src={profile.avatar} 
+                                            alt={profile.name} 
+                                            className="h-full w-full object-cover grayscale-[0.2] group-hover:grayscale-0"
+                                        />
+                                    </div>
+                                </div>
+                                <span className="font-bold text-slate-700 group-hover:text-indigo-600 transition-colors">{profile.name}</span>
+                            </button>
+                        ))}
+                    </div>
+                )}
+
+                {/* Secondary Actions for unlinked devices with local profiles */}
+                {!isLinked && !showWelcomeView && (
                     <div className="pt-6 border-t border-slate-200">
-                        <Card className="border-2 border-dashed border-slate-200 bg-transparent shadow-none hover:bg-slate-100/50 transition-colors">
+                        <Card className="border-2 border-dashed border-amber-200 bg-amber-50/30 shadow-none hover:bg-amber-50 transition-colors rounded-[2rem]">
                             <CardContent className="p-4">
                                 <button 
                                     onClick={() => setView('join')}
                                     className="w-full flex items-center justify-between group"
                                 >
                                     <div className="flex items-center gap-3">
-                                        <div className="h-10 w-10 rounded-xl bg-slate-200 flex items-center justify-center text-slate-500 group-hover:bg-amber-500 group-hover:text-white transition-all">
+                                        <div className="h-10 w-10 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow-lg shadow-amber-100 transition-all">
                                             <Smartphone className="h-5 w-5" />
                                         </div>
                                         <div className="text-left">
-                                            <p className="text-sm font-bold text-slate-700">Family Member?</p>
-                                            <p className="text-[10px] text-slate-500">Link this device to a family hub</p>
+                                            <p className="text-sm font-bold text-amber-900">Want to Sync?</p>
+                                            <p className="text-[10px] text-amber-700">Link this device to a family hub</p>
                                         </div>
                                     </div>
-                                    <Users className="h-4 w-4 text-slate-300 group-hover:text-amber-500 transition-colors" />
+                                    <Users className="h-4 w-4 text-amber-300 group-hover:text-amber-500 transition-colors" />
                                 </button>
                             </CardContent>
                         </Card>
                     </div>
                 )}
 
-                {/* App Version / Footer */}
-                <p className="text-center text-[10px] font-bold text-slate-300 uppercase tracking-widest">
-                    ChoreQuest v1.0.0 • {isLinked ? 'Family Link Active' : 'Offline Mode'}
-                </p>
+                <ConnectionFooter />
             </div>
         </div>
     );

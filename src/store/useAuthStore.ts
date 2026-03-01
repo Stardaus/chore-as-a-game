@@ -18,7 +18,7 @@ interface AuthState {
   initialize: () => Promise<void>;
 }
 
-export const useAuthStore = create<AuthState>((set, get) => ({
+export const useAuthStore = create<AuthState>((set) => ({
   session: null,
   user: null,
   isDeviceLinked: false,
@@ -51,7 +51,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const idb = await import('idb-keyval');
     await idb.del('linked-family-id');
     set({ session: null, user: null, isDeviceLinked: false });
-    useStore.getState().setFamilyId(null);
+    useStore.getState().resetAllData();
   },
 
   initialize: async () => {

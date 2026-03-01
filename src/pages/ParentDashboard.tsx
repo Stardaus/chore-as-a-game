@@ -11,6 +11,7 @@ import { ArrowLeft, Users, ListTodo, Gift, Settings, CheckSquare } from 'lucide-
 import { cn } from '../lib/utils';
 import { useStore } from '../store';
 import { useAuthStore } from '../store/useAuthStore';
+import { ConnectionFooter } from '../components/ui/ConnectionFooter';
 
 type Tab = 'profiles' | 'chores' | 'rewards' | 'approvals';
 
@@ -70,6 +71,8 @@ export function ParentDashboard() {
                 {activeTab === 'chores' && <ChoreBank />}
                 {activeTab === 'approvals' && <ApprovalQueue />}
                 {activeTab === 'rewards' && <RewardBank />}
+                
+                <ConnectionFooter />
             </main>
 
             {/* Settings Modal */}

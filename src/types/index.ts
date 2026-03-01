@@ -46,3 +46,12 @@ export interface Redemption {
     redeemedAt: string;
     approved: boolean;
 }
+
+export interface SyncOperation {
+    id: string;
+    table: string;
+    action: 'insert' | 'update' | 'delete';
+    payload?: any;
+    match?: { column: string; value: string };
+    timestamp: number;
+}

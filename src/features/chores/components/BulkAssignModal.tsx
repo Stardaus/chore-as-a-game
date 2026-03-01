@@ -35,9 +35,9 @@ export function BulkAssignModal({ isOpen, onClose }: BulkAssignModalProps) {
         );
     };
 
-    const handleAssign = () => {
+    const handleAssign = async () => {
         if (!selectedTag || selectedChildren.length === 0) return;
-        const { added, skipped } = assignChoresByTag(selectedTag, selectedChildren);
+        const { added, skipped } = await assignChoresByTag(selectedTag, selectedChildren);
         
         if (added > 0) {
             alert(`Successfully assigned ${added} quests!${skipped > 0 ? ` (${skipped} were already assigned)` : ''}`);

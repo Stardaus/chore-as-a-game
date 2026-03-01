@@ -10,6 +10,7 @@ import { ArrowLeft, Trophy, Gift, Sparkles, RefreshCw } from 'lucide-react';
 import { cn } from '../lib/utils';
 import canvasConfetti from 'canvas-confetti';
 import { get } from 'idb-keyval';
+import { ConnectionFooter } from '../components/ui/ConnectionFooter';
 
 type Tab = 'quests' | 'rewards';
 
@@ -58,12 +59,20 @@ export function ChildDashboard() {
         }
     }, [profile?.level]);
 
+    // Redirect to home if profile is not found (important for unlinked/reset state)
+    useEffect(() => {
+        if (!isSyncing && !profile && profiles.length === 0) {
+            navigate('/', { replace: true });
+        }
+    }, [profile, profiles.length, isSyncing, navigate]);
+
     if (!profile) {
         return (
             <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-slate-50">
                 <div className="text-center space-y-4">
-                    <p className="text-slate-500 font-medium">Hero not found!</p>
-                    <Button onClick={() => navigate('/')}>Return to Selection</Button>
+                    <RefreshCw className="h-8 w-8 text-indigo-600 animate-spin mx-auto" />
+                    <p className="text-slate-500 font-medium">Loading hero...</p>
+                    <Button variant="ghost" onClick={() => navigate('/')}>Return to Selection</Button>
                 </div>
             </div>
         );
@@ -102,6 +111,8 @@ export function ChildDashboard() {
                     ) : (
                         <RewardShop profile={profile} />
                     )}
+
+                    <ConnectionFooter />
                 </div>
             </main>
 

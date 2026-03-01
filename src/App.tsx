@@ -24,7 +24,7 @@ const PageLoader = () => (
 );
 
 function App() {
-  const { refreshAssignments, assignments, redemptions, notificationPrefs, syncWithCloud, familyId, setFamilyId } = useStore();
+  const { refreshAssignments, assignments, redemptions, notificationPrefs, syncWithCloud, familyId, setFamilyId, processSyncQueue } = useStore();
   const { initialize: initializeAuth, loading: authLoading, session } = useAuthStore();
 
   // 1. Initial Load: Auth and Refresh
@@ -36,31 +36,83 @@ function App() {
       if (document.visibilityState === 'visible') {
         refreshAssignments();
         ReminderService.checkAndSendReminder();
+        // Check for PWA updates when coming back to the app
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistration().then(reg => {
+                if (reg) reg.update();
+            });
+        }
+      }
+    };
+
+    // Offline -> Online synchronization handler
+    const handleOnline = async () => {
+      console.log('📡 Connection restored! Processing offline queue...');
+      await processSyncQueue();
+      const targetFamilyId = familyId || await get('linked-family-id');
+      if (targetFamilyId) {
+        syncWithCloud(targetFamilyId);
       }
     };
 
     window.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => window.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [refreshAssignments, initializeAuth]);
+    window.addEventListener('online', handleOnline);
+
+    // If we load the app while online, process any left-over offline queue items immediately
+    if (navigator.onLine) {
+        handleOnline();
+    }
+
+    return () => {
+      window.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('online', handleOnline);
+    };
+  }, [refreshAssignments, initializeAuth, processSyncQueue, syncWithCloud, familyId]);
 
   // 2. Cloud Sync Initializer: PRIORITIZE Linked Device or Session
   useEffect(() => {
     const initSync = async () => {
       // Check for local link first (for kids/tablets)
       let targetFamilyId = await get('linked-family-id');
+      let fetchSuccessful = false;
 
-      // If no local link, check for parent session
-      if (!targetFamilyId && session?.user) {
-        const { data } = await import('./lib/supabase').then(m => 
-          m.supabase.from('families').select('id').single()
-        );
-        targetFamilyId = data?.id;
+      // If no local link, check for parent session (ONLY if online)
+      if (!targetFamilyId && session?.user && navigator.onLine) {
+        try {
+          const { data, error } = await import('./lib/supabase').then(m => 
+            m.supabase.from('families').select('id').single()
+          );
+          
+          if (!error) {
+            targetFamilyId = data?.id || null;
+            fetchSuccessful = true;
+          } else {
+            console.warn("Server returned error during sync init:", error.message);
+          }
+        } catch (e) {
+          console.warn("Network error during family session verification.");
+        }
+      } else if (targetFamilyId) {
+          // If we have a local link ID, we consider the "fetch" of that ID successful (it exists locally)
+          fetchSuccessful = true;
       }
 
       if (targetFamilyId) {
         syncWithCloud(targetFamilyId);
+      } else if (fetchSuccessful) {
+        // ONLY cleanup if we successfully communicated with the server 
+        // AND it explicitly confirmed no family ID exists for this user.
+        const currentFamilyId = useStore.getState().familyId;
+        if (currentFamilyId) {
+          console.log("🧹 Cleanup: Server confirmed device unlinked, clearing data.");
+          useStore.getState().resetAllData();
+        } else {
+          setFamilyId(null);
+        }
       } else {
-        setFamilyId(null);
+          // If we are offline or fetch failed, DO NOTHING. 
+          // Preserving local data is the highest priority.
+          console.log("📡 Offline or network error: Staying in local mode.");
       }
     };
 
