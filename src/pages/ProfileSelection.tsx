@@ -20,7 +20,7 @@ import { ConnectionFooter } from '../components/ui/ConnectionFooter';
 export function ProfileSelection() {
     const navigate = useNavigate();
     const { profiles, isSyncing } = useStore();
-    const { isDeviceLinked: isLinked } = useAuthStore();
+    const { isDeviceLinked: isLinked, session } = useAuthStore();
     const [view, setView] = useState<'select' | 'join'>('select');
 
     const handleChildSelect = (childId: string) => {
@@ -35,7 +35,9 @@ export function ProfileSelection() {
         return <JoinFamily onJoined={() => setView('select')} onBack={() => setView('select')} />;
     }
 
-    const showWelcomeView = !isLinked && profiles.length === 0;
+    // A device is "Connected" if it's explicitly linked via code OR if a parent is logged in
+    const isConnected = isLinked || !!session;
+    const showWelcomeView = !isConnected && profiles.length === 0;
 
     return (
         <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-slate-50 relative overflow-hidden">
@@ -143,8 +145,8 @@ export function ProfileSelection() {
                     </div>
                 )}
 
-                {/* Secondary Actions for unlinked devices with local profiles */}
-                {!isLinked && !showWelcomeView && (
+                {/* Secondary Actions for standalone/unlinked users ONLY */}
+                {!isConnected && !showWelcomeView && (
                     <div className="pt-6 border-t border-slate-200">
                         <Card className="border-2 border-dashed border-amber-200 bg-amber-50/30 shadow-none hover:bg-amber-50 transition-colors rounded-[2rem]">
                             <CardContent className="p-4">

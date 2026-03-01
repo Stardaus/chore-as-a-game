@@ -1,0 +1,153 @@
+import { useState } from 'react';
+import { useStore } from '../../../store';
+import { useAuthStore } from '../../../store/useAuthStore';
+import { Button } from '../../../components/ui/Button';
+import { Input } from '../../../components/ui/Input';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../../components/ui/Card';
+import { Lock, ArrowLeft, AlertCircle, LogOut } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+
+interface PinLockProps {
+    onUnlock: () => void;
+}
+
+export function PinLock({ onUnlock }: PinLockProps) {
+    const navigate = useNavigate();
+    const { parentPin, recoveryQuestion, recoveryAnswer } = useStore();
+    const { signOut } = useAuthStore();
+    const [pin, setPin] = useState('');
+    const [error, setError] = useState<string | null>(null);
+    const [isRecovering, setIsRecovering] = useState(false);
+    const [answer, setAnswer] = useState('');
+
+    const handlePinSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (pin === parentPin) {
+            onUnlock();
+        } else {
+            setError('Incorrect PIN.');
+            setPin('');
+        }
+    };
+
+    const handleRecoverySubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (answer.toLowerCase().trim() === recoveryAnswer) {
+            onUnlock();
+        } else {
+            setError('Incorrect answer.');
+            setAnswer('');
+        }
+    };
+
+    const handleSignOut = async () => {
+        if (confirm("Are you sure you want to sign out? You will need to log back in with your email and password to access the Parent Hub.")) {
+            await signOut();
+            navigate('/');
+        }
+    };
+
+    return (
+        <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-slate-50">
+            <div className="w-full max-w-md space-y-6">
+                <Button variant="ghost" onClick={() => navigate('/')} className="text-slate-500 font-bold -ml-2">
+                    <ArrowLeft className="h-4 w-4 mr-2" /> Back to Selection
+                </Button>
+
+                <div className="text-center space-y-2">
+                    <div className="inline-flex h-16 w-16 items-center justify-center rounded-3xl bg-indigo-600 text-white shadow-xl mb-4">
+                        <Lock className="h-8 w-8" />
+                    </div>
+                    <h1 className="text-3xl font-black text-slate-900 tracking-tight">Parent Hub</h1>
+                    <p className="text-slate-500 font-medium italic">Restricted Access</p>
+                </div>
+
+                <Card className="border-2 border-indigo-100 shadow-xl rounded-[2.5rem] overflow-hidden">
+                    <CardHeader className="bg-indigo-50/50 pb-8 pt-8 px-8 border-b border-indigo-100/50">
+                        <CardTitle className="text-xl font-bold text-center text-indigo-900">
+                            {isRecovering ? 'Account Recovery' : 'Enter PIN'}
+                        </CardTitle>
+                        <CardDescription className="text-center font-medium text-indigo-600/70 text-sm">
+                            {isRecovering 
+                                ? (recoveryQuestion ? `Question: ${recoveryQuestion}` : 'No recovery question set. Use the default PIN (0000).') 
+                                : 'Please enter your dashboard PIN.'}
+                        </CardDescription>
+                    </CardHeader>
+                    
+                    <CardContent className="p-8">
+                        {error && (
+                            <div className="p-4 rounded-2xl bg-red-50 border border-red-100 flex items-start gap-3 mb-6 animate-in fade-in zoom-in duration-300">
+                                <AlertCircle className="h-5 w-5 text-red-500 shrink-0 mt-0.5" />
+                                <p className="text-sm text-red-700 font-medium leading-tight">{error}</p>
+                            </div>
+                        )}
+
+                        {!isRecovering ? (
+                            <form onSubmit={handlePinSubmit} className="space-y-6">
+                                <Input
+                                    type="password"
+                                    placeholder="••••"
+                                    className="h-16 text-center text-4xl font-black tracking-[0.5em] rounded-2xl border-2 border-indigo-100 focus:border-indigo-400 transition-all"
+                                    maxLength={6}
+                                    value={pin}
+                                    onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                                    autoFocus
+                                    required
+                                />
+                                <Button type="submit" className="w-full h-14 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white text-lg font-bold shadow-lg shadow-indigo-200">
+                                    Unlock
+                                </Button>
+                            </form>
+                        ) : (
+                            <form onSubmit={handleRecoverySubmit} className="space-y-6">
+                                <Input
+                                    placeholder="Your Answer"
+                                    className="h-14 rounded-2xl border-2 border-indigo-100 focus:border-indigo-400 transition-all text-lg font-medium"
+                                    value={answer}
+                                    onChange={(e) => setAnswer(e.target.value)}
+                                    autoFocus
+                                    required
+                                />
+                                <Button type="submit" className="w-full h-14 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white text-lg font-bold shadow-lg shadow-indigo-200">
+                                    Verify
+                                </Button>
+                            </form>
+                        )}
+                    </CardContent>
+                </Card>
+
+                {recoveryQuestion && !isRecovering && (
+                    <div className="text-center">
+                        <button 
+                            onClick={() => { setIsRecovering(true); setError(null); }}
+                            className="text-sm font-bold text-indigo-500 hover:text-indigo-700 transition-colors"
+                        >
+                            Forgot PIN?
+                        </button>
+                    </div>
+                )}
+                {isRecovering && (
+                    <div className="text-center">
+                        <button 
+                            onClick={() => { setIsRecovering(false); setError(null); }}
+                            className="text-sm font-bold text-indigo-500 hover:text-indigo-700 transition-colors"
+                        >
+                            Back to PIN entry
+                        </button>
+                    </div>
+                )}
+
+                {/* Sign Out / Escape Hatch */}
+                <div className="pt-6 mt-6 border-t border-slate-200">
+                    <Button 
+                        variant="ghost" 
+                        onClick={handleSignOut}
+                        className="w-full text-slate-500 hover:text-red-600 hover:bg-red-50 font-bold"
+                    >
+                        <LogOut className="h-4 w-4 mr-2" /> Sign Out / Switch Account
+                    </Button>
+                </div>
+            </div>
+        </div>
+    );
+}

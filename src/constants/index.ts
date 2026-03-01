@@ -1,4 +1,4 @@
-export const APP_VERSION = 'v1.3.6';
+export const APP_VERSION = 'v1.3.9';
 
 export const FREE_TIER_LIMITS = {
     PROFILES: 1,

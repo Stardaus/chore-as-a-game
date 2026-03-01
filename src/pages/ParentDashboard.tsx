@@ -6,6 +6,7 @@ import { RewardBank } from '../features/rewards/components/RewardBank';
 import { ApprovalQueue } from '../features/chores/components/ApprovalQueue';
 import { SettingsModal } from '../features/settings/components/SettingsModal';
 import { ParentAuth } from '../features/auth/components/ParentAuth';
+import { PinLock } from '../features/auth/components/PinLock';
 import { Button } from '../components/ui/Button';
 import { ArrowLeft, Users, ListTodo, Gift, Settings, CheckSquare, AlertTriangle } from 'lucide-react';
 import { cn } from '../lib/utils';
@@ -21,7 +22,7 @@ type Tab = 'profiles' | 'chores' | 'rewards' | 'approvals';
  * 
  * @description
  * Hosts the management tools (Profiles, Chores, Rewards, Approvals) within a tabbed interface.
- * STRICTLY gated by Supabase Email/Password session.
+ * STRICTLY gated by Supabase Email/Password session AND a local PIN.
  * 
  * @route /parent/*
  */
@@ -29,12 +30,18 @@ export function ParentDashboard() {
     const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState<Tab>('profiles');
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+    const [isUnlocked, setIsUnlocked] = useState(false);
     const { session } = useAuthStore(); // Only allow full session
     const { assignments, chores, profiles, rewards, isPremium } = useStore();
 
-    // STRICT SECURITY: Only parents with a session can enter here.
+    // STRICT SECURITY 1: Only parents with a session can enter here.
     if (!session) {
         return <ParentAuth />;
+    }
+
+    // STRICT SECURITY 2: Require PIN even if session exists, preventing child bypass on authenticated devices.
+    if (!isUnlocked) {
+        return <PinLock onUnlock={() => setIsUnlocked(true)} />;
     }
 
     const activeChores = chores.filter(c => c.status === 'active');

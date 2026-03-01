@@ -3,7 +3,7 @@ import { Modal } from '../../../components/ui/Modal';
 import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
 import { useStore } from '../../../store';
-import { Check, Star, Lock, Trash2, RefreshCcw, AlertTriangle, Key, Bell, Moon, Smartphone } from 'lucide-react';
+import { Check, Star, Lock, Trash2, RefreshCcw, AlertTriangle, Key, Bell, Moon, Smartphone, LogOut } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 import { DeviceManager } from '../../auth/components/DeviceManager';
 import { APP_VERSION } from '../../../constants';
@@ -282,6 +282,24 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                     </div>
 
                     <Button className="w-full" onClick={handleSaveAuth}>Save Security Settings</Button>
+                    <div className="pt-2">
+                        <Button 
+                            variant="ghost" 
+                            className="w-full text-slate-500 hover:text-red-600 hover:bg-red-50"
+                            onClick={async () => {
+                                if (confirm("Are you sure you want to sign out? You will need to log back in to access the Parent Hub.")) {
+                                    // Use standard global location assignment to break out of React Router state if needed
+                                    // and ensure a clean reload of the auth state.
+                                    window.location.href = '/';
+                                    // We import useAuthStore dynamically here to avoid circular dep issues in this large file
+                                    const { useAuthStore } = await import('../../../store/useAuthStore');
+                                    await useAuthStore.getState().signOut();
+                                }
+                            }}
+                        >
+                            <LogOut className="h-4 w-4 mr-2" /> Sign Out of Parent Hub
+                        </Button>
+                    </div>
                 </div>
 
                 {/* Data Management */}

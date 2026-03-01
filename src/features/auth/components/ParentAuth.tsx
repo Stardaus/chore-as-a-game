@@ -18,6 +18,7 @@ export function ParentAuth() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [resetSent, setResetSent] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,6 +42,27 @@ export function ParentAuth() {
       }
     } catch (err: any) {
       setError(err.message || 'An error occurred during authentication.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email) {
+      setError("Please enter your email address first.");
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.origin,
+      });
+      if (error) throw error;
+      setResetSent(true);
+      alert('Password reset link sent! Please check your email.');
+    } catch (err: any) {
+      setError(err.message || 'Failed to send reset link.');
     } finally {
       setLoading(false);
     }
@@ -115,6 +137,19 @@ export function ParentAuth() {
                   </span>
                 )}
               </Button>
+
+              {!isSignUp && (
+                <div className="text-center pt-2">
+                  <button
+                    type="button"
+                    onClick={handleForgotPassword}
+                    disabled={loading || resetSent}
+                    className="text-xs font-medium text-slate-500 hover:text-indigo-600 transition-colors disabled:opacity-50"
+                  >
+                    {resetSent ? 'Reset link sent' : 'Forgot Password?'}
+                  </button>
+                </div>
+              )}
             </form>
 
             <div className="mt-8 pt-6 border-t border-slate-100 text-center">
