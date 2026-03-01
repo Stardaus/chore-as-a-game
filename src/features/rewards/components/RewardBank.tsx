@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../..
 import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
 import { Trash2, Plus, Gift } from 'lucide-react';
+import { FREE_TIER_LIMITS } from '../../../constants';
 
 export function RewardBank() {
     const { rewards, addReward, archiveReward, isPremium } = useStore();
@@ -11,7 +12,7 @@ export function RewardBank() {
     const [cost, setCost] = useState('50');
 
     const activeRewards = rewards.filter(r => r.status === 'active');
-    const canAddReward = isPremium || activeRewards.length < 3;
+    const canAddReward = isPremium || activeRewards.length < FREE_TIER_LIMITS.REWARDS;
 
     const handleAddReward = (e: React.FormEvent) => {
         e.preventDefault();
@@ -63,7 +64,7 @@ export function RewardBank() {
                     </form>
                     {!canAddReward && (
                         <p className="text-xs text-amber-600 mt-2 font-medium">
-                            Free plan limit reached (3 Rewards). Upgrade to Premium to add more.
+                            Free plan limit reached ({FREE_TIER_LIMITS.REWARDS} Rewards). Upgrade to Premium to add more.
                         </p>
                     )}
                 </CardContent>

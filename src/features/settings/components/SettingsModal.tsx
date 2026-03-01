@@ -8,6 +8,7 @@ import { cn } from '../../../lib/utils';
 import { DeviceManager } from '../../auth/components/DeviceManager';
 import { APP_VERSION } from '../../../constants';
 import { useRegisterSW } from 'virtual:pwa-register/react';
+import { Validation } from '../../../lib/validation';
 
 interface SettingsModalProps {
     isOpen: boolean;
@@ -16,7 +17,7 @@ interface SettingsModalProps {
 
 export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     const { 
-        isPremium, setPremium, resetPoints, resetAllData, 
+        isPremium, setPremium, resetPoints, wipeFamilyData, 
         parentPin, setParentPin, recoveryQuestion, recoveryAnswer, setRecoveryInfo,
         notificationPrefs, setNotificationPrefs,
         reminderSettings, updateReminderSettings
@@ -27,6 +28,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     const [newPin, setNewPin] = useState(parentPin);
     const [question, setQuestion] = useState(recoveryQuestion);
     const [answer, setAnswer] = useState(recoveryAnswer);
+    const [isWiping, setIsWiping] = useState(false);
 
     const handleUpgrade = () => {
         if (confirm("Confirm upgrade to Premium? (Simulated Payment)")) {
@@ -41,10 +43,13 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     };
 
     const handleSaveAuth = () => {
-        if (newPin.length < 4) {
-            alert("PIN must be at least 4 digits.");
+        const result = Validation.security({ pin: newPin, question, answer });
+        
+        if (!result.valid) {
+            alert(result.error);
             return;
         }
+
         if (question && !answer) {
             alert("Please provide an answer to your recovery question.");
             return;
@@ -54,17 +59,26 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         alert("Authentication settings updated!");
     };
 
-    const handleResetPoints = () => {
+    const handleResetPoints = async () => {
         if (confirm("Are you sure you want to reset all points, levels, and history? Profiles and Chores will be kept.")) {
-            resetPoints();
+            await resetPoints();
+            alert("Points and history have been reset.");
             onClose();
         }
     };
 
-    const handleResetAll = () => {
-        if (confirm("DANGER: This will delete ALL profiles, chores, and rewards. This cannot be undone. Are you sure?")) {
-            resetAllData();
-            onClose();
+    const handleResetAll = async () => {
+        if (confirm("DANGER: This will permanently delete ALL profiles, chores, and rewards from the cloud and this device. This cannot be undone. Are you sure?")) {
+            setIsWiping(true);
+            try {
+                await wipeFamilyData();
+                alert("All family data has been permanently deleted.");
+            } catch (e) {
+                alert("Error wiping data. Check your connection.");
+            } finally {
+                setIsWiping(false);
+                onClose();
+            }
         }
     };
 
@@ -241,14 +255,30 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                     </h4>
                     
                     <div className="space-y-2">
-                        <label className="text-xs font-medium text-slate-500 uppercase tracking-wider">Dashboard PIN</label>
-                        <Input type="password" placeholder="New PIN" value={newPin} onChange={(e) => setNewPin(e.target.value)} />
+                        <label className="text-xs font-medium text-slate-500 uppercase tracking-wider">Dashboard PIN (4-6 digits)</label>
+                        <Input 
+                            type="password" 
+                            placeholder="New PIN" 
+                            value={newPin} 
+                            onChange={(e) => setNewPin(e.target.value.replace(/\D/g, '').slice(0, 6))} 
+                            maxLength={6}
+                        />
                     </div>
 
                     <div className="space-y-2">
                         <label className="text-xs font-medium text-slate-500 uppercase tracking-wider">Recovery Question</label>
-                        <Input placeholder="e.g. My first pet's name?" value={question} onChange={(e) => setQuestion(e.target.value)} />
-                        <Input placeholder="Your Answer" value={answer} onChange={(e) => setAnswer(e.target.value)} />
+                        <Input 
+                            placeholder="e.g. My first pet's name?" 
+                            value={question} 
+                            onChange={(e) => setQuestion(e.target.value)} 
+                            maxLength={100}
+                        />
+                        <Input 
+                            placeholder="Your Answer" 
+                            value={answer} 
+                            onChange={(e) => setAnswer(e.target.value)} 
+                            maxLength={50}
+                        />
                     </div>
 
                     <Button className="w-full" onClick={handleSaveAuth}>Save Security Settings</Button>
@@ -270,8 +300,18 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                     >
                         <RefreshCcw className="mr-2 h-4 w-4" /> Check for App Updates
                     </Button>
-                    <Button variant="outline" className="w-full justify-start text-red-600 border-red-200 hover:bg-red-50" onClick={handleResetAll}>
-                        <Trash2 className="mr-2 h-4 w-4" /> Delete All Data
+                    <Button 
+                        variant="outline" 
+                        className="w-full justify-start text-red-600 border-red-200 hover:bg-red-50" 
+                        onClick={handleResetAll}
+                        disabled={isWiping}
+                    >
+                        {isWiping ? (
+                            <div className="mr-2 h-4 w-4 border-2 border-red-200 border-t-red-600 rounded-full animate-spin" />
+                        ) : (
+                            <Trash2 className="mr-2 h-4 w-4" /> 
+                        )}
+                        Delete All Data
                     </Button>
                 </div>
 

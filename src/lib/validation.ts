@@ -42,5 +42,30 @@ export const Validation = {
         if (!name || name.length > 15) return { valid: false, error: 'Name must be 1-15 characters.' };
         
         return { valid: true, data: { ...data, name } };
+    },
+
+    /**
+     * Constraints for Security (PIN/Recovery)
+     */
+    security: (data: { pin?: string; question?: string; answer?: string }) => {
+        if (data.pin !== undefined) {
+            if (!/^\d{4,6}$/.test(data.pin)) return { valid: false, error: 'PIN must be 4-6 digits.' };
+        }
+        if (data.question !== undefined) {
+            if (data.question.length > 100) return { valid: false, error: 'Question too long (max 100).' };
+        }
+        if (data.answer !== undefined) {
+            if (data.answer.length > 50) return { valid: false, error: 'Answer too long (max 50).' };
+        }
+        return { valid: true, data };
+    },
+
+    /**
+     * Constraints for Device Linking
+     */
+    device: (data: { name: string }) => {
+        const name = data.name.trim();
+        if (!name || name.length > 20) return { valid: false, error: 'Device name must be 1-20 characters.' };
+        return { valid: true, data: { ...data, name } };
     }
 };

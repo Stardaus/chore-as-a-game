@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../..
 import { Users, ArrowLeft, Smartphone, CheckCircle2, AlertCircle, Share } from 'lucide-react';
 import { useAuthStore } from '../../../store/useAuthStore';
 import { Modal } from '../../../components/ui/Modal';
+import { Validation } from '../../../lib/validation';
 
 interface JoinFamilyProps {
     onJoined: (familyId: string) => void;
@@ -38,12 +39,15 @@ export function JoinFamily({ onJoined, onBack }: JoinFamilyProps) {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        
         if (code.length !== 6) {
             setError('Please enter a valid 6-digit code.');
             return;
         }
-        if (!name.trim()) {
-            setError('Please give this device a name.');
+
+        const result = Validation.device({ name });
+        if (!result.valid) {
+            setError(result.error || 'Invalid device name.');
             return;
         }
 
@@ -51,7 +55,7 @@ export function JoinFamily({ onJoined, onBack }: JoinFamilyProps) {
         setError(null);
 
         try {
-            const familyId = await DeviceService.linkDevice(code, name);
+            const familyId = await DeviceService.linkDevice(code, result.data!.name);
             
             // CRITICAL FIX: Trigger global state refresh immediately after linking
             await refreshLinkStatus();
@@ -99,7 +103,7 @@ export function JoinFamily({ onJoined, onBack }: JoinFamilyProps) {
                         <p className="text-xs font-bold text-slate-400 uppercase tracking-widest text-center">How to Install</p>
                         <div className="flex items-center gap-4 text-sm text-slate-700">
                             <div className="h-8 w-8 rounded-full bg-white shadow-sm flex items-center justify-center shrink-0 font-bold text-indigo-600">1</div>
-                            <p>Tap the <span className="font-bold inline-flex items-center gap-1 bg-white px-2 py-0.5 rounded border border-slate-200 shadow-sm text-indigo-600"><Share className="h-3 x-3" /> Share</span> button below</p>
+                            <p>Tap the <span className="font-bold inline-flex items-center gap-1 bg-white px-2 py-0.5 rounded border border-slate-200 shadow-sm text-indigo-600"><Share className="h-3 w-3" /> Share</span> button below</p>
                         </div>
                         <div className="flex items-center gap-4 text-sm text-slate-700">
                             <div className="h-8 w-8 rounded-full bg-white shadow-sm flex items-center justify-center shrink-0 font-bold text-indigo-600">2</div>
@@ -171,7 +175,7 @@ export function JoinFamily({ onJoined, onBack }: JoinFamilyProps) {
                                 </div>
 
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Device Name</label>
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Device Name (Max 20)</label>
                                     <div className="relative">
                                         <Smartphone className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
                                         <Input
@@ -179,6 +183,7 @@ export function JoinFamily({ onJoined, onBack }: JoinFamilyProps) {
                                             className="pl-12 h-12 rounded-xl border-slate-200"
                                             value={name}
                                             onChange={(e) => setName(e.target.value)}
+                                            maxLength={20}
                                             required
                                         />
                                     </div>

@@ -6,6 +6,7 @@ import { Input } from '../../../components/ui/Input';
 import { Modal } from '../../../components/ui/Modal';
 import { Trash2, UserPlus, Pencil } from 'lucide-react';
 import { AvatarSelector } from '../../avatars/components/AvatarSelector';
+import { FREE_TIER_LIMITS } from '../../../constants';
 
 export function ProfileManager() {
     const { profiles, addProfile, deleteProfile, updateProfile, isPremium } = useStore();
@@ -14,7 +15,7 @@ export function ProfileManager() {
     const [isSelectorOpen, setIsSelectorOpen] = useState(false);
     const [editingProfileId, setEditingProfileId] = useState<string | null>(null);
 
-    const canAddProfile = isPremium || profiles.length < 1;
+    const canAddProfile = isPremium || profiles.length < FREE_TIER_LIMITS.PROFILES;
 
     const handleAddProfile = (e: React.FormEvent) => {
         e.preventDefault();
@@ -76,7 +77,7 @@ export function ProfileManager() {
                     </form>
                     {!canAddProfile && (
                         <p className="text-xs text-amber-600 mt-2 font-medium">
-                            Free plan limit reached (1 Profile). Upgrade to Premium to add more.
+                            Free plan limit reached ({FREE_TIER_LIMITS.PROFILES} Profile). Upgrade to Premium to add more.
                         </p>
                     )}
                 </CardContent>

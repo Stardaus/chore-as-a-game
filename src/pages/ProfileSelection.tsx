@@ -4,9 +4,8 @@ import { useAuthStore } from '../store/useAuthStore';
 import { Button } from '../components/ui/Button';
 import { Card, CardContent } from '../components/ui/Card';
 import { ShieldCheck, UserCircle, Users, Smartphone, Sparkles, RefreshCw } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { JoinFamily } from '../features/auth/components/JoinFamily';
-import { get } from 'idb-keyval';
 import { ConnectionFooter } from '../components/ui/ConnectionFooter';
 
 /**
@@ -20,24 +19,9 @@ import { ConnectionFooter } from '../components/ui/ConnectionFooter';
  */
 export function ProfileSelection() {
     const navigate = useNavigate();
-    const { profiles, isSyncing, syncWithCloud } = useStore();
-    const { session, isDeviceLinked } = useAuthStore();
+    const { profiles, isSyncing } = useStore();
+    const { isDeviceLinked: isLinked } = useAuthStore();
     const [view, setView] = useState<'select' | 'join'>('select');
-    const [isLinked, setIsLinked] = useState(false);
-
-    useEffect(() => {
-        const checkLink = async () => {
-            const familyId = await get('linked-family-id');
-            const linked = !!familyId || !!session;
-            setIsLinked(linked);
-            
-            // If linked but profiles empty, try a quick sync
-            if (familyId && profiles.length === 0) {
-                syncWithCloud(familyId);
-            }
-        };
-        checkLink();
-    }, [session, profiles.length, syncWithCloud, isDeviceLinked]);
 
     const handleChildSelect = (childId: string) => {
         navigate(`/child/${childId}`);
@@ -48,7 +32,7 @@ export function ProfileSelection() {
     };
 
     if (view === 'join') {
-        return <JoinFamily onJoined={() => { setView('select'); setIsLinked(true); }} onBack={() => setView('select')} />;
+        return <JoinFamily onJoined={() => setView('select')} onBack={() => setView('select')} />;
     }
 
     const showWelcomeView = !isLinked && profiles.length === 0;

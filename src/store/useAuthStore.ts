@@ -36,12 +36,13 @@ export const useAuthStore = create<AuthState>((set) => ({
   refreshLinkStatus: async () => {
     const idb = await import('idb-keyval');
     const linkedFamilyId = await idb.get('linked-family-id');
-    const isLinked = !!linkedFamilyId;
+    const { session } = useAuthStore.getState();
+    const isLinked = !!linkedFamilyId || !!session;
     
     set({ isDeviceLinked: isLinked });
     
-    // If we just got linked, tell the main store to sync immediately
-    if (isLinked) {
+    // If we have a local ID, tell the main store to sync
+    if (linkedFamilyId) {
       useStore.getState().syncWithCloud(linkedFamilyId);
     }
   },
@@ -51,7 +52,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     const idb = await import('idb-keyval');
     await idb.del('linked-family-id');
     set({ session: null, user: null, isDeviceLinked: false });
-    useStore.getState().resetAllData();
+    useStore.getState().clearLocalData();
   },
 
   initialize: async () => {

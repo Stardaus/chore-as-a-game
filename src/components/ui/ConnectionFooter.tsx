@@ -1,7 +1,5 @@
 import { useState, useEffect } from 'react';
-import { get } from 'idb-keyval';
 import { useAuthStore } from '../../store/useAuthStore';
-import { useStore } from '../../store';
 import { APP_VERSION } from '../../constants';
 import { cn } from '../../lib/utils';
 import { Globe, WifiOff, Cloud, Database, Sparkles } from 'lucide-react';
@@ -11,20 +9,11 @@ import { Globe, WifiOff, Cloud, Database, Sparkles } from 'lucide-react';
  * Provides HIGH-VISIBILITY feedback on connectivity and link status.
  */
 export function ConnectionFooter() {
-    const { session } = useAuthStore();
-    const { familyId } = useStore();
-    const [isLinked, setIsLinked] = useState(false);
+    const { isDeviceLinked: isLinked } = useAuthStore();
     const [isOnline, setIsOnline] = useState(navigator.onLine);
 
     useEffect(() => {
-        const checkLink = async () => {
-            const localFamilyId = await get('linked-family-id');
-            setIsLinked(!!localFamilyId || !!familyId || !!session);
-        };
-        
         const handleStatusChange = () => setIsOnline(navigator.onLine);
-        
-        checkLink();
         window.addEventListener('online', handleStatusChange);
         window.addEventListener('offline', handleStatusChange);
         
@@ -32,7 +21,7 @@ export function ConnectionFooter() {
             window.removeEventListener('online', handleStatusChange);
             window.removeEventListener('offline', handleStatusChange);
         };
-    }, [session, familyId]);
+    }, []);
 
     return (
         <div className="mt-auto pt-10 pb-6 space-y-6">

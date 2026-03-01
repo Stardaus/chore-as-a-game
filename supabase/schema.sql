@@ -175,6 +175,46 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+-- RPC: Destructive Wipe (Delete all task data but keep family/subscription)
+CREATE OR REPLACE FUNCTION public.wipe_family_data(target_family_id UUID)
+RETURNS void AS $$
+BEGIN
+  -- Verify the caller has access to this family
+  IF NOT public.is_family_member(target_family_id) THEN
+    RAISE EXCEPTION 'Access Denied';
+  END IF;
+
+  DELETE FROM public.profiles WHERE family_id = target_family_id;
+  DELETE FROM public.chores WHERE family_id = target_family_id;
+  DELETE FROM public.rewards WHERE family_id = target_family_id;
+  DELETE FROM public.assignments WHERE family_id = target_family_id;
+  DELETE FROM public.redemptions WHERE family_id = target_family_id;
+  DELETE FROM public.devices WHERE family_id = target_family_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- RPC: Reset Points (Reset XP/Levels and delete history)
+CREATE OR REPLACE FUNCTION public.reset_family_points(target_family_id UUID)
+RETURNS void AS $$
+BEGIN
+  -- Verify the caller has access to this family
+  IF NOT public.is_family_member(target_family_id) THEN
+    RAISE EXCEPTION 'Access Denied';
+  END IF;
+
+  UPDATE public.profiles 
+  SET points = 0, xp = 0, level = 1 
+  WHERE family_id = target_family_id;
+
+  DELETE FROM public.assignments WHERE family_id = target_family_id;
+  DELETE FROM public.redemptions WHERE family_id = target_family_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Grant execution
+GRANT EXECUTE ON FUNCTION public.wipe_family_data(UUID) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.reset_family_points(UUID) TO anon, authenticated;
+
 -- Grant execution to everyone (logic is inside function)
 GRANT EXECUTE ON FUNCTION public.register_device_by_code(TEXT, UUID, TEXT) TO anon;
 GRANT EXECUTE ON FUNCTION public.register_device_by_code(TEXT, UUID, TEXT) TO authenticated;

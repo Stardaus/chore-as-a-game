@@ -7,11 +7,12 @@ import { ApprovalQueue } from '../features/chores/components/ApprovalQueue';
 import { SettingsModal } from '../features/settings/components/SettingsModal';
 import { ParentAuth } from '../features/auth/components/ParentAuth';
 import { Button } from '../components/ui/Button';
-import { ArrowLeft, Users, ListTodo, Gift, Settings, CheckSquare } from 'lucide-react';
+import { ArrowLeft, Users, ListTodo, Gift, Settings, CheckSquare, AlertTriangle } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useStore } from '../store';
 import { useAuthStore } from '../store/useAuthStore';
 import { ConnectionFooter } from '../components/ui/ConnectionFooter';
+import { FREE_TIER_LIMITS } from '../constants';
 
 type Tab = 'profiles' | 'chores' | 'rewards' | 'approvals';
 
@@ -29,12 +30,22 @@ export function ParentDashboard() {
     const [activeTab, setActiveTab] = useState<Tab>('profiles');
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const { session } = useAuthStore(); // Only allow full session
-    const { assignments, chores } = useStore();
+    const { assignments, chores, profiles, rewards, isPremium } = useStore();
 
     // STRICT SECURITY: Only parents with a session can enter here.
     if (!session) {
         return <ParentAuth />;
     }
+
+    const activeChores = chores.filter(c => c.status === 'active');
+    const activeRewards = rewards.filter(r => r.status === 'active');
+
+    // Check if the user is in a "Grandfathered" over-limit state (downgraded)
+    const isOverLimits = !isPremium && (
+        profiles.length > FREE_TIER_LIMITS.PROFILES ||
+        activeChores.length > FREE_TIER_LIMITS.CHORES ||
+        activeRewards.length > FREE_TIER_LIMITS.REWARDS
+    );
 
     // Calculate pending approvals count
     const pendingCount = assignments.filter(a => {
@@ -64,6 +75,25 @@ export function ParentDashboard() {
                     <Settings className="h-5 w-5 text-slate-500" />
                 </Button>
             </header>
+
+            {/* Over Limit Warning Banner */}
+            {isOverLimits && (
+                <div className="bg-amber-100 border-b border-amber-200 px-4 py-3 flex items-start gap-3 shrink-0">
+                    <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+                    <div className="space-y-1">
+                        <p className="text-sm font-bold text-amber-900 leading-tight">Free Tier Limits Exceeded</p>
+                        <p className="text-xs text-amber-800 leading-tight">
+                            You cannot add new items until you remove some or re-upgrade to Premium. Existing quests and rewards will continue to work normally.
+                        </p>
+                        <button 
+                            onClick={() => setIsSettingsOpen(true)}
+                            className="text-xs font-bold text-amber-700 underline mt-1 block hover:text-amber-900 transition-colors"
+                        >
+                            View Subscription Settings
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {/* Main Content */}
             <main className="flex-1 overflow-y-auto p-4 hidden-scrollbar pb-24">

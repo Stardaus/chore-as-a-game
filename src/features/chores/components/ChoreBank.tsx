@@ -10,6 +10,7 @@ import { AssignChoreModal } from './AssignChoreModal';
 import { BulkAssignModal } from './BulkAssignModal';
 import { TemplateSelectorModal } from './TemplateSelectorModal';
 import { EditChoreModal } from './EditChoreModal';
+import { FREE_TIER_LIMITS } from '../../../constants';
 
 /**
  * Central management interface for Chores.
@@ -33,7 +34,7 @@ export function ChoreBank() {
     const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
 
     const activeChores = chores.filter(c => c.status === 'active');
-    const canAddChore = isPremium || activeChores.length < 5;
+    const canAddChore = isPremium || activeChores.length < FREE_TIER_LIMITS.CHORES;
 
     const now = new Date();
     const todayStr = now.toISOString().split('T')[0];
@@ -102,9 +103,18 @@ export function ChoreBank() {
 
                 <button
                     onClick={() => setIsTemplateModalOpen(true)}
-                    className="flex flex-col items-center justify-center p-4 rounded-3xl border-2 border-amber-100 bg-amber-50/50 hover:bg-amber-50 hover:border-amber-300 transition-all text-left group"
+                    disabled={!canAddChore}
+                    className={cn(
+                        "flex flex-col items-center justify-center p-4 rounded-3xl border-2 transition-all text-left group",
+                        canAddChore 
+                            ? "border-amber-100 bg-amber-50/50 hover:bg-amber-50 hover:border-amber-300" 
+                            : "border-slate-100 bg-slate-50 opacity-50 cursor-not-allowed"
+                    )}
                 >
-                    <div className="h-12 w-12 rounded-2xl bg-amber-500 text-white flex items-center justify-center mb-3 shadow-lg group-hover:scale-110 transition-transform">
+                    <div className={cn(
+                        "h-12 w-12 rounded-2xl flex items-center justify-center mb-3 shadow-lg transition-transform",
+                        canAddChore ? "bg-amber-500 text-white group-hover:scale-110" : "bg-slate-300 text-slate-500"
+                    )}>
                         <Sparkles className="h-6 w-6 fill-current" />
                     </div>
                     <span className="font-bold text-slate-800">Add from Template</span>
@@ -186,7 +196,7 @@ export function ChoreBank() {
                     </form>
                     {!canAddChore && (
                         <p className="text-xs text-amber-600 mt-2 font-medium">
-                            Free plan limit reached (5 Chores). Upgrade to Premium to add more.
+                            Free plan limit reached ({FREE_TIER_LIMITS.CHORES} Chores). Upgrade to Premium to add more.
                         </p>
                     )}
                 </CardContent>
