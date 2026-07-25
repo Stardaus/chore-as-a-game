@@ -5,22 +5,34 @@ import { SecurityVault } from '../../../services/SecurityVault';
 import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../../components/ui/Card';
-import { Lock, ArrowLeft, AlertCircle, LogOut } from 'lucide-react';
+import { Lock, ArrowLeft, AlertCircle, LogOut, Calculator, HelpCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface PinLockProps {
     onUnlock: () => void;
 }
 
+type RecoveryMode = 'none' | 'question' | 'math';
+
 export function PinLock({ onUnlock }: PinLockProps) {
     const navigate = useNavigate();
     const { parentPin, recoveryQuestion, recoveryAnswer } = useStore();
     const { signOut } = useAuthStore();
+    
     const [pin, setPin] = useState('');
     const [error, setError] = useState<string | null>(null);
-    const [isRecovering, setIsRecovering] = useState(false);
+    const [recoveryMode, setRecoveryMode] = useState<RecoveryMode>('none');
     const [answer, setAnswer] = useState('');
+    
+    // Math Challenge State
+    const [mathProblem, setMathProblem] = useState({ question: '', answer: 0 });
 
+    const generateMathProblem = () => {
+        const challenge = SecurityVault.generateMathChallenge();
+        setMathProblem({ question: challenge.text, answer: challenge.answer });
+        setAnswer('');
+        setError(null);
+    };
 
     const handlePinSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -34,10 +46,15 @@ export function PinLock({ onUnlock }: PinLockProps) {
 
     const handleRecoverySubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (SecurityVault.verifySecurityQuestion(answer, recoveryAnswer)) {
+        const isCorrect = recoveryMode === 'question' 
+            ? SecurityVault.verifySecurityQuestion(answer, recoveryAnswer)
+            : SecurityVault.verifyChallengeAnswer(answer, mathProblem.answer);
+
+        if (isCorrect) {
             onUnlock();
         } else {
-            setError('Incorrect answer.');
+            setError(recoveryMode === 'question' ? 'Incorrect answer.' : 'Wrong calculation. Try again!');
+            if (recoveryMode === 'math') generateMathProblem();
             setAnswer('');
         }
     };
@@ -67,12 +84,14 @@ export function PinLock({ onUnlock }: PinLockProps) {
                 <Card className="border-2 border-indigo-100 shadow-xl rounded-[2.5rem] overflow-hidden">
                     <CardHeader className="bg-indigo-50/50 pb-8 pt-8 px-8 border-b border-indigo-100/50">
                         <CardTitle className="text-xl font-bold text-center text-indigo-900">
-                            {isRecovering ? 'Account Recovery' : 'Enter PIN'}
+                            {recoveryMode === 'none' && 'Enter PIN'}
+                            {recoveryMode === 'question' && 'Account Recovery'}
+                            {recoveryMode === 'math' && 'Parent Verification'}
                         </CardTitle>
                         <CardDescription className="text-center font-medium text-indigo-600/70 text-sm">
-                            {isRecovering 
-                                ? (recoveryQuestion ? `Question: ${recoveryQuestion}` : 'No recovery question set. Use the default PIN (0000).') 
-                                : 'Please enter your dashboard PIN.'}
+                            {recoveryMode === 'none' && 'Please enter your dashboard PIN.'}
+                            {recoveryMode === 'question' && (recoveryQuestion || 'Security Question')}
+                            {recoveryMode === 'math' && 'Solve this problem to prove you are a parent.'}
                         </CardDescription>
                     </CardHeader>
                     
@@ -84,7 +103,7 @@ export function PinLock({ onUnlock }: PinLockProps) {
                             </div>
                         )}
 
-                        {!isRecovering ? (
+                        {recoveryMode === 'none' ? (
                             <form onSubmit={handlePinSubmit} className="space-y-6">
                                 <Input
                                     type="password"
@@ -102,36 +121,57 @@ export function PinLock({ onUnlock }: PinLockProps) {
                             </form>
                         ) : (
                             <form onSubmit={handleRecoverySubmit} className="space-y-6">
+                                {recoveryMode === 'math' && (
+                                    <div className="text-center mb-2">
+                                        <span className="text-4xl font-black text-slate-800 tracking-tighter bg-slate-100 px-6 py-3 rounded-2xl border-2 border-slate-200 inline-block">
+                                            {mathProblem.question} = ?
+                                        </span>
+                                    </div>
+                                )}
                                 <Input
-                                    placeholder="Your Answer"
-                                    className="h-14 rounded-2xl border-2 border-indigo-100 focus:border-indigo-400 transition-all text-lg font-medium"
+                                    type={recoveryMode === 'math' ? 'number' : 'text'}
+                                    placeholder={recoveryMode === 'math' ? "Result" : "Your Answer"}
+                                    className="h-14 text-center rounded-2xl border-2 border-indigo-100 focus:border-indigo-400 transition-all text-xl font-bold"
                                     value={answer}
                                     onChange={(e) => setAnswer(e.target.value)}
                                     autoFocus
                                     required
                                 />
                                 <Button type="submit" className="w-full h-14 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white text-lg font-bold shadow-lg shadow-indigo-200">
-                                    Verify
+                                    Verify & Unlock
                                 </Button>
                             </form>
                         )}
                     </CardContent>
                 </Card>
 
-                {recoveryQuestion && !isRecovering && (
-                    <div className="text-center">
-                        <button 
-                            onClick={() => { setIsRecovering(true); setError(null); }}
-                            className="text-sm font-bold text-indigo-500 hover:text-indigo-700 transition-colors"
-                        >
-                            Forgot PIN?
-                        </button>
+                {recoveryMode === 'none' ? (
+                    <div className="flex flex-col gap-3">
+                        <div className="grid grid-cols-2 gap-3">
+                            {recoveryQuestion && (
+                                <Button 
+                                    variant="outline" 
+                                    size="sm"
+                                    onClick={() => setRecoveryMode('question')}
+                                    className="rounded-xl text-slate-500 border-slate-200 text-xs font-bold"
+                                >
+                                    <HelpCircle className="h-3 w-3 mr-1.5" /> Security Q
+                                </Button>
+                            )}
+                            <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => { generateMathProblem(); setRecoveryMode('math'); }}
+                                className="rounded-xl text-slate-500 border-slate-200 text-xs font-bold"
+                            >
+                                <Calculator className="h-3 w-3 mr-1.5" /> Math Gate
+                            </Button>
+                        </div>
                     </div>
-                )}
-                {isRecovering && (
+                ) : (
                     <div className="text-center">
                         <button 
-                            onClick={() => { setIsRecovering(false); setError(null); }}
+                            onClick={() => { setRecoveryMode('none'); setError(null); }}
                             className="text-sm font-bold text-indigo-500 hover:text-indigo-700 transition-colors"
                         >
                             Back to PIN entry
