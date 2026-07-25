@@ -9,12 +9,22 @@ import { createRewardSlice } from './slices/rewardSlice';
 import { createSyncSlice } from './slices/syncSlice';
 import { createConfigSlice } from './slices/configSlice';
 
-// Custom storage object for IndexedDB
+import { StorageEncryption } from '../lib/encryption';
+
+// Encrypted storage adapter for IndexedDB
 const storage: StateStorage = {
-    getItem: async (name: string): Promise<string | null> => (await get(name)) || null,
-    setItem: async (name: string, value: string): Promise<void> => { await set(name, value); },
+    getItem: async (name: string): Promise<string | null> => {
+        const raw = await get(name);
+        if (!raw) return null;
+        return await StorageEncryption.decrypt(raw);
+    },
+    setItem: async (name: string, value: string): Promise<void> => {
+        const encrypted = await StorageEncryption.encrypt(value);
+        await set(name, encrypted);
+    },
     removeItem: async (name: string): Promise<void> => { await del(name); },
 };
+
 
 /**
  * Global application state, composed of domain-specific slices.

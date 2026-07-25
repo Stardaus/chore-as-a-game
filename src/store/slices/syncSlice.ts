@@ -2,6 +2,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { supabase } from '../../lib/supabase';
 import { Mappers } from '../../lib/mappers';
 import type { StoreSet, StoreGet, SyncSlice } from './types';
+import { SyncEngine } from '../../services/SyncEngine';
+
 
 export const createSyncSlice = (set: StoreSet, get: StoreGet): SyncSlice => ({
     syncQueue: [],
@@ -9,19 +11,7 @@ export const createSyncSlice = (set: StoreSet, get: StoreGet): SyncSlice => ({
     isSyncing: false,
 
     safeSync: async (table, action, payload, match) => {
-        if (!navigator.onLine) {
-            get().queueSyncOperation({ table, action, payload, match });
-            return;
-        }
-        try {
-            let query = supabase.from(table)[action](payload);
-            if (match) query = query.eq(match.column, match.value);
-            const { error } = await query;
-            if (error) throw error;
-        } catch (error) {
-            console.warn(`Offline or network error, queuing ${action} on ${table}`);
-            get().queueSyncOperation({ table, action, payload, match });
-        }
+        await SyncEngine.dispatch({ table, action, payload, match });
     },
 
     queueSyncOperation: (op) => {
@@ -31,38 +21,7 @@ export const createSyncSlice = (set: StoreSet, get: StoreGet): SyncSlice => ({
     },
 
     processSyncQueue: async () => {
-        const { syncQueue } = get();
-        if (syncQueue.length === 0 || !navigator.onLine) return;
-
-        console.log(`🔄 Processing ${syncQueue.length} offline operations...`);
-        let remainingQueue = [...syncQueue];
-
-        for (const op of syncQueue) {
-            try {
-                let error;
-                if (op.table === 'rpc') {
-                    const { error: rpcError } = await supabase.rpc(op.payload.function, op.payload.params);
-                    error = rpcError;
-                } else {
-                    let query = supabase.from(op.table)[op.action](op.payload);
-                    if (op.match) {
-                        query = query.eq(op.match.column, op.match.value);
-                    }
-                    const { error: queryError } = await query;
-                    error = queryError;
-                }
-
-                if (error) {
-                    console.error(`Failed to process queued operation ${op.id}:`, error);
-                    break;
-                }
-                remainingQueue = remainingQueue.filter(q => q.id !== op.id);
-            } catch (error) {
-                console.error(`Error processing queued operation ${op.id}:`, error);
-                break;
-            }
-        }
-        set({ syncQueue: remainingQueue });
+        await SyncEngine.processQueue();
     },
 
     syncWithCloud: async (familyId: string) => {

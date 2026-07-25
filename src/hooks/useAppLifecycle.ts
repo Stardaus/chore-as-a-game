@@ -1,9 +1,9 @@
 import { useEffect } from 'react';
 import { useStore } from '../store';
 import { useAuthStore } from '../store/useAuthStore';
-import { NotificationService } from '../services/NotificationService';
-import { ReminderService } from '../services/ReminderService';
+import { NotificationCenter } from '../services/NotificationCenter';
 import { SyncService } from '../services/SyncService';
+import { supabase } from '../lib/supabase';
 import { get } from 'idb-keyval';
 
 /**
@@ -13,7 +13,7 @@ import { get } from 'idb-keyval';
  * - Cloud synchronization & Cleanup
  * - Real-time listeners
  * - Network & Visibility events
- * - App Badging & Reminders
+ * - Notification Center integration
  */
 export function useAppLifecycle() {
     const { 
@@ -31,7 +31,7 @@ export function useAppLifecycle() {
         const handleVisibilityChange = () => {
             if (document.visibilityState === 'visible') {
                 refreshAssignments();
-                ReminderService.checkAndSendReminder();
+                NotificationCenter.checkScheduledReminders();
                 if ('serviceWorker' in navigator) {
                     navigator.serviceWorker.getRegistration().then(reg => {
                         if (reg) reg.update();
@@ -70,9 +70,7 @@ export function useAppLifecycle() {
 
             if (!targetFamilyId && session?.user && navigator.onLine) {
                 try {
-                    const { data, error } = await import('../lib/supabase').then(m => 
-                        m.supabase.from('families').select('id').single()
-                    );
+                    const { data, error } = await supabase.from('families').select('id').single();
                     if (!error) {
                         targetFamilyId = data?.id || null;
                         fetchSuccessful = true;
@@ -83,6 +81,7 @@ export function useAppLifecycle() {
             } else if (targetFamilyId) {
                 fetchSuccessful = true;
             }
+
 
             if (targetFamilyId) {
                 syncWithCloud(targetFamilyId);
@@ -111,26 +110,18 @@ export function useAppLifecycle() {
 
     // 4. Global Badging Logic
     useEffect(() => {
-        if (!notificationPrefs.badgeEnabled) {
-            NotificationService.updateBadge(0);
-            return;
-        }
-
-        const pendingApprovals = assignments.filter(a => a.completed && !a.verifiedAt).length;
-        const pendingRedemptions = redemptions.filter(r => !r.approved).length;
-        const activeQuests = assignments.filter(a => !a.completed).length;
-
-        NotificationService.updateBadge(pendingApprovals + pendingRedemptions + activeQuests);
+        NotificationCenter.updateBadgeFromState();
     }, [assignments, redemptions, notificationPrefs.badgeEnabled]);
 
     // 5. Global Reminder Heartbeat
     useEffect(() => {
         const interval = setInterval(() => {
-            ReminderService.checkAndSendReminder();
+            NotificationCenter.checkScheduledReminders();
         }, 60000);
-        ReminderService.checkAndSendReminder();
+        NotificationCenter.checkScheduledReminders();
         return () => clearInterval(interval);
     }, []);
 
     return { authLoading };
 }
+

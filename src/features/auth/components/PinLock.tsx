@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useStore } from '../../../store';
 import { useAuthStore } from '../../../store/useAuthStore';
+import { SecurityVault } from '../../../services/SecurityVault';
 import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../../components/ui/Card';
@@ -20,9 +21,10 @@ export function PinLock({ onUnlock }: PinLockProps) {
     const [isRecovering, setIsRecovering] = useState(false);
     const [answer, setAnswer] = useState('');
 
+
     const handlePinSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (pin === parentPin) {
+        if (SecurityVault.verifyPin(pin, parentPin)) {
             onUnlock();
         } else {
             setError('Incorrect PIN.');
@@ -32,7 +34,7 @@ export function PinLock({ onUnlock }: PinLockProps) {
 
     const handleRecoverySubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (answer.toLowerCase().trim() === recoveryAnswer) {
+        if (SecurityVault.verifySecurityQuestion(answer, recoveryAnswer)) {
             onUnlock();
         } else {
             setError('Incorrect answer.');
