@@ -8,7 +8,13 @@ export const createRewardSlice = (set: StoreSet, get: StoreGet): RewardSlice => 
     redemptions: [],
 
     addReward: async (reward) => {
-        const { familyId, rewards, isPremium, safeSync } = get();
+        let { familyId, rewards, isPremium, safeSync } = get();
+        if (!familyId) {
+            const idb = await import('idb-keyval');
+            familyId = (await idb.get<string>('linked-family-id')) || null;
+            if (familyId) set({ familyId });
+        }
+
         const result = Validation.reward(reward);
         if (!result.valid) { alert(result.error); return; }
         

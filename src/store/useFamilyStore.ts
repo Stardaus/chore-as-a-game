@@ -44,11 +44,20 @@ export const useFamilyStore = create<FamilyState>((set) => ({
                 .from('families')
                 .select('*')
                 .eq('parent_id', userData.user.id)
-                .single();
+                .maybeSingle();
             
             if (error) throw error;
             set({ family: data });
-            return data.id;
+
+            if (data?.id) {
+                const idb = await import('idb-keyval');
+                await idb.set('linked-family-id', data.id);
+                const { useStore } = await import('./useStore');
+                useStore.getState().setFamilyId(data.id);
+                useStore.getState().syncWithCloud(data.id);
+            }
+
+            return data?.id || null;
         } catch (error) {
             console.error('Error fetching family:', error);
             return null;

@@ -8,6 +8,7 @@ import { createChoreSlice } from './slices/choreSlice';
 import { createRewardSlice } from './slices/rewardSlice';
 import { createSyncSlice } from './slices/syncSlice';
 import { createConfigSlice } from './slices/configSlice';
+import { createToastSlice } from './slices/toastSlice';
 
 import { StorageEncryption } from '../lib/encryption';
 
@@ -37,6 +38,7 @@ export const useStore = create<StoreState>()(
             ...createRewardSlice(set, get),
             ...createSyncSlice(set, get),
             ...createConfigSlice(set, get),
+            ...createToastSlice(set, get),
         }),
         { 
             name: 'chore-quest-storage', 
@@ -44,3 +46,4 @@ export const useStore = create<StoreState>()(
         }
     )
 );
+

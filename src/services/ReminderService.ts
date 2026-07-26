@@ -1,5 +1,5 @@
 import { useStore } from '../store';
-import { NotificationService } from './NotificationService';
+import { NotificationCenter } from './NotificationCenter';
 
 /**
  * Service to handle scheduled evening reminders.
@@ -45,10 +45,11 @@ export const ReminderService = {
                     ? `Have ${profile.name} finished "${chore.title}" yet for today?`
                     : `Some quests are still waiting to be finished today!`;
 
-                await NotificationService.sendNotification("Evening Check-in 🌙", {
-                    body: message,
-                    tag: 'evening-reminder',
-                    requireInteraction: true
+                await NotificationCenter.dispatchSmartNotification({
+                    title: "Evening Check-in 🌙",
+                    message,
+                    type: 'quest',
+                    tag: 'evening-reminder'
                 });
             }
 
@@ -57,3 +58,4 @@ export const ReminderService = {
         }
     }
 };
+

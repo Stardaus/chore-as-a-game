@@ -3,7 +3,6 @@ import { useStore } from '../store';
 import { useAuthStore } from '../store/useAuthStore';
 import { NotificationCenter } from '../services/NotificationCenter';
 import { SyncService } from '../services/SyncService';
-import { supabase } from '../lib/supabase';
 import { get } from 'idb-keyval';
 
 /**
@@ -65,14 +64,15 @@ export function useAppLifecycle() {
     // 2. Cloud Sync Initializer
     useEffect(() => {
         const initSync = async () => {
-            let targetFamilyId = await get('linked-family-id');
+            let targetFamilyId = await get<string>('linked-family-id');
             let fetchSuccessful = false;
 
             if (!targetFamilyId && session?.user && navigator.onLine) {
                 try {
-                    const { data, error } = await supabase.from('families').select('id').single();
-                    if (!error) {
-                        targetFamilyId = data?.id || null;
+                    const { useFamilyStore } = await import('../store/useFamilyStore');
+                    const familyId = await useFamilyStore.getState().fetchFamily();
+                    if (familyId) {
+                        targetFamilyId = familyId;
                         fetchSuccessful = true;
                     }
                 } catch (e) {
@@ -81,7 +81,6 @@ export function useAppLifecycle() {
             } else if (targetFamilyId) {
                 fetchSuccessful = true;
             }
-
 
             if (targetFamilyId) {
                 syncWithCloud(targetFamilyId);

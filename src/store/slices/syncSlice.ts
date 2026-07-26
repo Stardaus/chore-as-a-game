@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import { supabase } from '../../lib/supabase';
+import { supabase, ensureDeviceIdHeader } from '../../lib/supabase';
 import { Mappers } from '../../lib/mappers';
 import type { StoreSet, StoreGet, SyncSlice } from './types';
 import { SyncEngine } from '../../services/SyncEngine';
@@ -27,6 +27,7 @@ export const createSyncSlice = (set: StoreSet, get: StoreGet): SyncSlice => ({
     syncWithCloud: async (familyId: string) => {
         if (!navigator.onLine) return;
         
+        await ensureDeviceIdHeader();
         set({ isSyncing: true, familyId });
         try {
             const [p, c, a, r, rd, f] = await Promise.all([
@@ -35,16 +36,42 @@ export const createSyncSlice = (set: StoreSet, get: StoreGet): SyncSlice => ({
                 supabase.from('assignments').select('*').eq('family_id', familyId),
                 supabase.from('rewards').select('*').eq('family_id', familyId),
                 supabase.from('redemptions').select('*').eq('family_id', familyId),
-                supabase.from('families').select('subscription_tier').eq('id', familyId).single(),
+                supabase.from('families').select('subscription_tier').eq('id', familyId).maybeSingle(),
             ]);
 
-            if (p.error || c.error || a.error || r.error || rd.error || f.error) {
-                console.warn('Sync partially failed (network issue?), preserving local data.');
+            if (p.error || c.error || a.error || r.error || rd.error) {
+                console.warn('Sync failed for core family tables:', {
+                    pErr: p.error, cErr: c.error, aErr: a.error, rErr: r.error, rdErr: rd.error
+                });
                 return; 
             }
 
+            // Self-Healing Sync: If local profiles exist that haven't been inserted to Supabase PostgreSQL, push them now
+            const remoteProfiles = p.data || [];
+            const remoteProfileIds = new Set(remoteProfiles.map((x: any) => x.id));
+            const localProfiles = get().profiles;
+            const profilesToPush = localProfiles.filter(lp => !remoteProfileIds.has(lp.id));
+
+            if (profilesToPush.length > 0) {
+                for (const lp of profilesToPush) {
+                    await supabase.from('profiles').insert({
+                        id: lp.id,
+                        family_id: familyId,
+                        name: lp.name,
+                        avatar: lp.avatar,
+                        points: lp.points,
+                        xp: lp.xp,
+                        level: lp.level
+                    });
+                }
+                const { data: updatedProfiles } = await supabase.from('profiles').select('*').eq('family_id', familyId);
+                if (updatedProfiles) {
+                    remoteProfiles.push(...updatedProfiles.filter(up => !remoteProfileIds.has(up.id)));
+                }
+            }
+
             set({
-                profiles: p.data || [],
+                profiles: remoteProfiles,
                 chores: (c.data || []).map(Mappers.chore),
                 assignments: (a.data || []).map(Mappers.assignment),
                 rewards: r.data || [],

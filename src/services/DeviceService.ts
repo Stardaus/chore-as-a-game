@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import { get, set } from 'idb-keyval';
-import { supabase } from '../lib/supabase';
+import { supabase, ensureDeviceIdHeader } from '../lib/supabase';
 
 const DEVICE_ID_KEY = 'chore-quest-device-id';
 
@@ -12,11 +12,12 @@ export const DeviceService = {
      * Retrieves or generates a persistent unique ID for this browser installation.
      */
     getDeviceId: async (): Promise<string> => {
-        let deviceId = await get(DEVICE_ID_KEY);
+        let deviceId = await get<string>(DEVICE_ID_KEY);
         if (!deviceId) {
             deviceId = uuidv4();
             await set(DEVICE_ID_KEY, deviceId);
         }
+        await ensureDeviceIdHeader();
         return deviceId;
     },
 
@@ -50,6 +51,7 @@ export const DeviceService = {
 
         // Store the linked family ID locally for real-time synchronization
         await set('linked-family-id', familyId);
+        await ensureDeviceIdHeader();
         
         return familyId;
     }

@@ -1,7 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from '../../lib/supabase';
 import { Validation } from '../../lib/validation';
-import { NotificationService } from '../../services/NotificationService';
 import { FREE_TIER_LIMITS } from '../../constants';
 import type { StoreSet, StoreGet, ChoreSlice } from './types';
 import type { Assignment } from '../../types';
@@ -11,7 +10,13 @@ export const createChoreSlice = (set: StoreSet, get: StoreGet): ChoreSlice => ({
     assignments: [],
 
     addChore: async (chore) => {
-        const { familyId, isPremium, chores, safeSync } = get();
+        let { familyId, isPremium, chores, safeSync } = get();
+        if (!familyId) {
+            const idb = await import('idb-keyval');
+            familyId = (await idb.get<string>('linked-family-id')) || null;
+            if (familyId) set({ familyId });
+        }
+
         const result = Validation.chore(chore);
         if (!result.valid) { alert(result.error); return; }
         
@@ -63,20 +68,12 @@ export const createChoreSlice = (set: StoreSet, get: StoreGet): ChoreSlice => ({
     },
 
     assignChore: async (choreId, childId) => {
-        const { familyId, chores, assignments, notificationPrefs, profiles, safeSync } = get();
+        const { familyId, chores, assignments, safeSync } = get();
         const chore = chores.find(c => c.id === choreId);
-        const profile = profiles.find(p => p.id === childId);
         if (!chore) return;
         
         const newAssignment = { id: uuidv4(), choreId, childId, completed: false, createdAt: new Date().toISOString() };
         set({ assignments: [...assignments, newAssignment] });
-        
-        if (notificationPrefs.enabled) {
-            NotificationService.sendNotification("New Quest Assigned!", {
-                body: `${profile?.name || 'Child'} has a new quest: ${chore.title}`,
-                tag: `assign-${choreId}-${childId}`
-            });
-        }
 
         if (familyId) await safeSync('assignments', 'insert', { id: newAssignment.id, family_id: familyId, profile_id: childId, chore_id: choreId, completed: false, created_at: newAssignment.createdAt });
     },
@@ -93,41 +90,26 @@ export const createChoreSlice = (set: StoreSet, get: StoreGet): ChoreSlice => ({
     },
 
     toggleAssignment: async (id) => {
-        const { familyId, assignments, chores, profiles, notificationPrefs, safeSync } = get();
+        const { familyId, assignments, chores, safeSync } = get();
         const a = assignments.find(a => a.id === id);
         if (!a || a.verifiedAt) return;
         const c = chores.find(c => c.id === a.choreId);
-        const p_info = profiles.find(p => p.id === a.childId);
         if (!c) return;
         const isCompleting = !a.completed;
         const now = new Date().toISOString();
-        
-        if (isCompleting && c.requiresApproval && notificationPrefs.enabled) {
-            NotificationService.sendNotification("Approval Requested", {
-                body: `${p_info?.name || 'Child'} finished: ${c.title}`,
-                tag: `approve-${id}`
-            });
-        }
 
         set({ assignments: assignments.map(x => x.id === id ? { ...x, completed: isCompleting, completedAt: isCompleting ? now : undefined } : x) });
         if (familyId) await safeSync('assignments', 'update', { completed: isCompleting, completed_at: isCompleting ? now : null }, { column: 'id', value: id });
     },
 
     approveAssignment: async (id) => {
-        const { familyId, assignments, chores, profiles, notificationPrefs, safeSync } = get();
+        const { familyId, assignments, chores, profiles, safeSync } = get();
         const a = assignments.find(a => a.id === id);
         if (!a) return;
         const c = chores.find(c => c.id === a.choreId);
         if (!c) return;
         const verifiedAt = new Date().toISOString();
         const nextProfiles = profiles.map(p => p.id === a.childId ? { ...p, points: p.points + c.points, xp: p.xp + c.points, level: Math.floor((p.xp + c.points) / 100) + 1 } : p);
-        
-        if (notificationPrefs.enabled) {
-            NotificationService.sendNotification("Quest Verified!", {
-                body: `Success! ${c.title} is complete. +${c.points} XP`,
-                tag: `verified-${id}`
-            });
-        }
 
         set({ assignments: assignments.map(x => x.id === id ? { ...x, verifiedAt } : x), profiles: nextProfiles });
         if (familyId) {

@@ -37,16 +37,30 @@ export const NotificationService = {
         }
 
         try {
-            // Use Service Worker if available for better background handling
-            const registration = await navigator.serviceWorker.getRegistration();
-            if (registration) {
-                registration.showNotification(title, {
-                    icon: '/pwa-192x192.png',
-                    badge: '/favicon-196.png',
-                    ...options
-                });
+            let registration;
+            if ('serviceWorker' in navigator) {
+                registration = await navigator.serviceWorker.getRegistration();
+                if (!registration && navigator.serviceWorker.ready) {
+                    registration = await navigator.serviceWorker.ready;
+                }
+            }
+
+            const notificationTag = options?.tag || `cq-notif-${Date.now()}`;
+            const notificationPayload = {
+                icon: '/pwa-192x192.png',
+                badge: '/favicon-196.png',
+                ...options,
+                tag: notificationTag
+            };
+
+            if (registration && 'showNotification' in registration) {
+                await registration.showNotification(title, notificationPayload);
             } else {
-                new Notification(title, options);
+                try {
+                    new Notification(title, notificationPayload);
+                } catch (e) {
+                    console.warn('Native Notification constructor unsupported (iOS Web Push requires Service Worker):', e);
+                }
             }
         } catch (error) {
             console.error('Failed to send notification:', error);

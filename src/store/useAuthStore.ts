@@ -15,6 +15,7 @@ interface AuthState {
   setDeviceLinked: (linked: boolean) => void;
   refreshLinkStatus: () => Promise<void>;
   signOut: () => Promise<void>;
+  unlinkDevice: () => Promise<void>;
   initialize: () => Promise<void>;
 }
 
@@ -52,6 +53,23 @@ export const useAuthStore = create<AuthState>((set) => ({
     const idb = await import('idb-keyval');
     await idb.del('linked-family-id');
     set({ session: null, user: null, isDeviceLinked: false });
+    useStore.getState().clearLocalData();
+  },
+
+  unlinkDevice: async () => {
+    const idb = await import('idb-keyval');
+    const myDeviceId = await idb.get<string>('chore-quest-device-id');
+
+    if (myDeviceId && navigator.onLine) {
+      try {
+        await supabase.from('devices').delete().eq('id', myDeviceId);
+      } catch (e) {
+        console.warn('Failed to remove device row remotely:', e);
+      }
+    }
+
+    await idb.del('linked-family-id');
+    set({ isDeviceLinked: false });
     useStore.getState().clearLocalData();
   },
 

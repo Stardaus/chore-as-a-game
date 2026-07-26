@@ -37,7 +37,7 @@ export function ProfileSelection() {
 
     // A device is "Connected" if it's explicitly linked via code OR if a parent is logged in
     const isConnected = isLinked || !!session;
-    const showWelcomeView = !isConnected && profiles.length === 0;
+    const showWelcomeView = !isConnected;
 
     return (
         <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-slate-50 relative overflow-hidden">

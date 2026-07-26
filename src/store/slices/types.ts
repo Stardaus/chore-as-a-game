@@ -1,7 +1,16 @@
 import type { Profile, Chore, Assignment, Reward, Redemption, SyncOperation } from '../../types';
 
+export interface ToastItem {
+    id: string;
+    title: string;
+    message: string;
+    type?: 'info' | 'success' | 'quest' | 'reward';
+    createdAt: number;
+}
+
 export interface StoreState 
-    extends ProfileSlice, ChoreSlice, RewardSlice, SyncSlice, ConfigSlice {}
+    extends ProfileSlice, ChoreSlice, RewardSlice, SyncSlice, ConfigSlice, ToastSlice {}
+
 
 export type StoreSet = {
     (partial: StoreState | Partial<StoreState> | ((state: StoreState) => StoreState | Partial<StoreState>), replace?: false): void;
@@ -69,3 +78,10 @@ export interface ConfigSlice {
     setParentPin: (pin: string) => void;
     setRecoveryInfo: (question: string, answer: string) => void;
 }
+
+export interface ToastSlice {
+    toasts: ToastItem[];
+    addToast: (toast: Omit<ToastItem, 'id' | 'createdAt'>) => void;
+    removeToast: (id: string) => void;
+}
+

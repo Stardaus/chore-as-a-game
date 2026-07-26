@@ -3,6 +3,7 @@ import { Modal } from '../../../components/ui/Modal';
 import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
 import { useStore } from '../../../store';
+import { useAuthStore } from '../../../store/useAuthStore';
 import { Check, Star, Lock, Trash2, RefreshCcw, AlertTriangle, Key, Bell, Moon, Smartphone, LogOut } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 import { DeviceManager } from '../../auth/components/DeviceManager';
@@ -287,17 +288,24 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                             variant="ghost" 
                             className="w-full text-slate-500 hover:text-red-600 hover:bg-red-50"
                             onClick={async () => {
-                                if (confirm("Are you sure you want to sign out? You will need to log back in to access the Parent Hub.")) {
-                                    // Use standard global location assignment to break out of React Router state if needed
-                                    // and ensure a clean reload of the auth state.
-                                    window.location.href = '/';
-                                    // We import useAuthStore dynamically here to avoid circular dep issues in this large file
-                                    const { useAuthStore } = await import('../../../store/useAuthStore');
-                                    await useAuthStore.getState().signOut();
+                                const { useAuthStore } = await import('../../../store/useAuthStore');
+                                const { session, signOut, unlinkDevice } = useAuthStore.getState();
+
+                                if (session) {
+                                    if (confirm("Are you sure you want to sign out of your parent account?")) {
+                                        window.location.href = '/';
+                                        await signOut();
+                                    }
+                                } else {
+                                    if (confirm("Unlink this device from the family hub?")) {
+                                        window.location.href = '/';
+                                        await unlinkDevice();
+                                    }
                                 }
                             }}
                         >
-                            <LogOut className="h-4 w-4 mr-2" /> Sign Out of Parent Hub
+                            <LogOut className="h-4 w-4 mr-2" />
+                            {useAuthStore.getState().session ? "Sign Out of Parent Account" : "Unlink This Device"}
                         </Button>
                     </div>
                 </div>

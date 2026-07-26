@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { ProfileSelection } from './pages/ProfileSelection';
 import { Layout } from './layouts/Layout';
 import { ReloadPrompt } from './components/ui/ReloadPrompt';
+import { ToastContainer } from './components/ui/ToastContainer';
 import { useAppLifecycle } from './hooks/useAppLifecycle';
 
 // Lazy load heavy dashboard pages
@@ -35,9 +36,11 @@ function App() {
           </Route>
         </Routes>
       </Suspense>
+      <ToastContainer />
       <ReloadPrompt />
     </BrowserRouter>
   );
 }
+
 
 export default App;

@@ -8,14 +8,18 @@ import { Trash2, UserPlus, Pencil } from 'lucide-react';
 import { AvatarSelector } from '../../avatars/components/AvatarSelector';
 import { FREE_TIER_LIMITS } from '../../../constants';
 
+import { useAuthStore } from '../../../store/useAuthStore';
+
 export function ProfileManager() {
     const { profiles, addProfile, deleteProfile, updateProfile, isPremium } = useStore();
+    const { session, isDeviceLinked } = useAuthStore();
     const [newProfileName, setNewProfileName] = useState('');
     const [selectedAvatar, setSelectedAvatar] = useState('https://api.dicebear.com/7.x/fun-emoji/svg?seed=Buddy');
     const [isSelectorOpen, setIsSelectorOpen] = useState(false);
     const [editingProfileId, setEditingProfileId] = useState<string | null>(null);
 
-    const canAddProfile = isPremium || profiles.length < FREE_TIER_LIMITS.PROFILES;
+    const isConnected = !!session || isDeviceLinked;
+    const canAddProfile = isConnected && (isPremium || profiles.length < FREE_TIER_LIMITS.PROFILES);
 
     const handleAddProfile = (e: React.FormEvent) => {
         e.preventDefault();
@@ -77,7 +81,10 @@ export function ProfileManager() {
                     </form>
                     {!canAddProfile && (
                         <p className="text-xs text-amber-600 mt-2 font-medium">
-                            Free plan limit reached ({FREE_TIER_LIMITS.PROFILES} Profile). Upgrade to Premium to add more.
+                            {!isConnected 
+                                ? "This device is currently unlinked. Link this device via join code or sign in to manage profiles." 
+                                : `Free plan limit reached (${FREE_TIER_LIMITS.PROFILES} Profile). Upgrade to Premium to add more.`
+                            }
                         </p>
                     )}
                 </CardContent>

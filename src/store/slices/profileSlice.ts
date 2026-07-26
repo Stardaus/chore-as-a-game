@@ -8,7 +8,17 @@ export const createProfileSlice = (set: StoreSet, get: StoreGet): ProfileSlice =
     profiles: [],
 
     addProfile: async (name, avatar) => {
-        const { familyId, isPremium, profiles, safeSync } = get();
+        let { familyId, isPremium, profiles, safeSync } = get();
+        if (!familyId) {
+            const idb = await import('idb-keyval');
+            familyId = (await idb.get<string>('linked-family-id')) || null;
+            if (!familyId) {
+                const { useFamilyStore } = await import('../useFamilyStore');
+                familyId = await useFamilyStore.getState().fetchFamily();
+            }
+            if (familyId) set({ familyId });
+        }
+
         const result = Validation.profile({ name });
         if (!result.valid) { alert(result.error); return; }
         if (!isPremium && profiles.length >= FREE_TIER_LIMITS.PROFILES) { alert("Free tier limit!"); return; }

@@ -18,23 +18,23 @@ export const supabase = createClient(
 );
 
 /**
- * Helper to dynamically inject the Device ID header into requests.
- * This avoids top-level await and ensures compatibility with older browsers.
+ * Dynamically injects the Device ID header into Supabase client REST headers.
+ * Sets strictly lower-case 'x-device-id' to avoid header duplication in PostgREST.
  */
-export const getAuthenticatedQuery = async (table: string) => {
-    const deviceId = await get('chore-quest-device-id');
-    const headers: Record<string, string> = {};
-    if (deviceId) headers['X-Device-ID'] = deviceId;
-    
-    return supabase.from(table);
-};
-
-// Initialize device ID in the background without blocking
-get('chore-quest-device-id').then(deviceId => {
+export const ensureDeviceIdHeader = async (): Promise<string | undefined> => {
+    const deviceId = await get<string>('chore-quest-device-id');
     if (deviceId) {
+        const currentHeaders = { ...(supabase as any).rest.headers };
+        delete currentHeaders['X-Device-ID'];
+        delete currentHeaders['x-device-id'];
+
         (supabase as any).rest.headers = {
-            ...(supabase as any).rest.headers,
-            'X-Device-ID': deviceId
+            ...currentHeaders,
+            'x-device-id': deviceId
         };
     }
-});
+    return deviceId;
+};
+
+// Initialize device ID header on module load
+ensureDeviceIdHeader();

@@ -31,15 +31,15 @@ export function ParentDashboard() {
     const [activeTab, setActiveTab] = useState<Tab>('profiles');
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [isUnlocked, setIsUnlocked] = useState(false);
-    const { session } = useAuthStore(); // Only allow full session
+    const { session, isDeviceLinked } = useAuthStore();
     const { assignments, chores, profiles, rewards, isPremium } = useStore();
 
-    // STRICT SECURITY 1: Only parents with a session can enter here.
-    if (!session) {
+    // SECURITY 1: Device must either be the master account (session) or a linked secondary device
+    if (!session && !isDeviceLinked) {
         return <ParentAuth />;
     }
 
-    // STRICT SECURITY 2: Require PIN even if session exists, preventing child bypass on authenticated devices.
+    // SECURITY 2: Require PIN unlock to enter Parent Dashboard, protecting admin functions from children on all devices
     if (!isUnlocked) {
         return <PinLock onUnlock={() => setIsUnlocked(true)} />;
     }

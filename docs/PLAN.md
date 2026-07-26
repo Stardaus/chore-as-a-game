@@ -95,46 +95,60 @@ Establish formal Spec-Driven Development (SDD) specification documentation for t
 Completed.
 <!--
 # Plan: Implement Architecture & Deep Module Refactoring
-
-## 1. Objective
-Refactor the ChoreQuest codebase to deepen key modules, resolve architectural friction across Security, Scalability, and Feasibility, and fulfill mandatory requirements (IndexedDB encryption, clean offline sync, event-driven notifications, and decoupled security logic).
-
-## 2. Proposed Refactoring Steps
-
-### Phase 1: IndexedDB Encrypted Storage Adapter (Security)
-- **Files:** `src/lib/encryption.ts` (new), `src/store/useStore.ts`
-- **Changes:**
-  - Create `EncryptedStorageAdapter` using browser Web Crypto API (`crypto.subtle`) with AES-GCM 256-bit encryption, PBKDF2 key derivation, and unique IV generation per operation.
-  - Integrate `EncryptedStorageAdapter` into `useStore.ts` as the custom `StateStorage` engine for Zustand `persist` middleware.
-  - Implement fallback handling to seamlessly migrate unencrypted state if present.
-
-### Phase 2: Unified Offline Sync Engine (Scalability & Reliability)
-- **Files:** `src/services/SyncEngine.ts` (new), `src/store/slices/syncSlice.ts`, `src/store/slices/choreSlice.ts`, `src/store/slices/profileSlice.ts`, `src/store/slices/rewardSlice.ts`
-- **Changes:**
-  - Create `SyncEngine` module to encapsulate Supabase mutation execution, `navigator.onLine` checks, offline queueing (`syncQueue`), and exponential backoff retry.
-  - Provide a clean `syncEngine.dispatch({ table, action, payload, match })` interface.
-  - Refactor store slices (`choreSlice`, `profileSlice`, `rewardSlice`) to remove scattered `safeSync` try-catch blocks and delegate network mutations to `SyncEngine`.
-
-### Phase 3: Notification & App Badging Center (Feasibility & Maintainability)
-- **Files:** `src/services/NotificationCenter.ts` (new), `src/services/NotificationService.ts`, `src/services/ReminderService.ts`, `src/hooks/useAppLifecycle.ts`
-- **Changes:**
-  - Create `NotificationCenter` to consolidate permission checks, Service Worker notification triggers, evening reminder heartbeats, and dynamic PWA app badging logic.
-  - Move badge count derivation (`pendingApprovals + pendingRedemptions + activeQuests`) out of React `useEffect` in `useAppLifecycle.ts` into `NotificationCenter`.
-  - Refactor `useAppLifecycle.ts` to be clean and focused purely on lifecycle subscriptions.
-
-### Phase 4: Parent Security Vault (Security & Testability)
-- **Files:** `src/services/SecurityVault.ts` (new), `src/features/auth/components/ParentAuth.tsx`, `src/features/settings/components/SettingsModal.tsx`
-- **Changes:**
-  - Create `SecurityVault` module providing methods for `verifyPin(input, pin)`, `generateMathChallenge()`, and `verifyChallengeAnswer(input, challenge)`.
-  - Refactor `ParentAuth.tsx` to delegate math challenge generation and security question validation to `SecurityVault`.
-
-### Phase 5: Verification & Testing
-- Run `npm run build` (`tsc -b && vite build`) to ensure zero type errors and clean minification.
-- Verify IndexedDB state encryption, offline queue sync behavior, PWA badging, and PIN authentication.
-
+...
 ## 3. Status
 Completed.
 -->
+
+<!--
+# Plan: Smart Notification Routing & In-App Toast System
+
+## 1. Objective
+Refactor the notification architecture to eliminate duplicate OS notifications for local self-actions, route remote family events to an In-App Toast Banner when the app is in the foreground, and reserve iOS/OS system notifications strictly for remote events when the app is in the background.
+
+## 2. Notification Routing Matrix
+
+| Trigger Event | Action Origin | App Visibility | Notification Output |
+| :--- | :--- | :--- | :--- |
+| **Local Action** (Assign, Complete, Approve) | Current Device | Foreground or Background | **None** (Local UI updates immediately, no notification pop-up) |
+| **Remote Event** (Other family device action) | Other Device | **Foreground** (`visible`) | **In-App Toast Banner** (Sleek animated top banner in app UI) |
+| **Remote Event** (Other family device action) | Other Device | **Background** (`hidden`) | **iOS / OS Notification** (Web Push / SW Notification if enabled) |
+| **Evening Nudge** | Daily Schedule | Foreground / Background | In-App Toast (Foreground) / OS Notification (Background) |
+
+## 3. Implementation Steps
+
+### Step 1: Remove Self-Action Notification Triggers from Store Actions
+- **Files:** `src/store/slices/choreSlice.ts`, `src/store/slices/rewardSlice.ts`
+- **Changes:**
+  - Remove direct `NotificationService.sendNotification(...)` calls inside local store mutation actions (`assignChore`, `toggleAssignment`, `approveAssignment`).
+  - Local actions rely on immediate UI state updates.
+
+### Step 2: Toast State Slice & In-App Toast Component
+- **Files:** `src/store/slices/toastSlice.ts` (new), `src/components/ui/ToastContainer.tsx` (new), `src/App.tsx`
+- **Changes:**
+  - Create a toast slice in Zustand (`toasts: Toast[]`, `addToast`, `removeToast`).
+  - Create a modern, animated `ToastContainer` component rendered at the top of the layout in `App.tsx`.
+
+### Step 3: Remote Event Diffing & Notification Dispatcher in `SyncService`
+- **Files:** `src/services/SyncService.ts`, `src/services/NotificationCenter.ts`
+- **Changes:**
+  - In `SyncService.initRealtime()`, inspect incoming Postgres `CHANGES` payloads.
+  - Diff incoming remote data against current local state to determine the event type (e.g. `Assignment Completed`, `New Quest Assigned`, `Approval Requested`).
+  - Check `document.visibilityState === 'visible'`:
+    - **If Visible (Foreground):** Call `addToast({ title, message, type })`.
+    - **If Hidden (Background):** Call `NotificationCenter.sendNotification(title, { body })` (if `notificationPrefs.enabled`).
+
+### Step 4: Verification & Testing
+- Test local action on device: verify no OS notification and no in-app toast pops up for self-action.
+- Test remote action in foreground: verify sleek in-app toast banner slides down.
+- Test remote action in background: verify iOS/OS system notification fires.
+- Run `npm run build` (`tsc -b && vite build`) to verify compilation.
+
+## 4. Status
+Completed.
+-->
+
+
 
 
 

@@ -53,5 +53,42 @@ export const NotificationCenter = {
      */
     sendNotification: async (title: string, options?: NotificationOptions): Promise<void> => {
         await NotificationService.sendNotification(title, options);
+    },
+
+    /**
+     * Smart Notification Dispatcher:
+     * - If app is in FOREGROUND (`document.visibilityState === 'visible'`), display an In-App Toast Banner.
+     * - If app is in BACKGROUND (`document.visibilityState === 'hidden'`), trigger OS system notification.
+     */
+    dispatchSmartNotification: async (options: {
+        title: string;
+        message: string;
+        type?: 'info' | 'success' | 'quest' | 'reward';
+        tag?: string;
+    }): Promise<void> => {
+        const isForeground = document.visibilityState === 'visible';
+
+        if (isForeground) {
+            useStore.getState().addToast({
+                title: options.title,
+                message: options.message,
+                type: options.type || 'info'
+            });
+        } else {
+            const { notificationPrefs, setNotificationPrefs } = useStore.getState();
+            const hasPermission = ("Notification" in window) && Notification.permission === "granted";
+
+            if (hasPermission && !notificationPrefs.enabled) {
+                setNotificationPrefs({ enabled: true });
+            }
+
+            if (notificationPrefs.enabled || hasPermission) {
+                await NotificationService.sendNotification(options.title, {
+                    body: options.message,
+                    tag: options.tag
+                });
+            }
+        }
     }
 };
+

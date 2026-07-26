@@ -3,6 +3,8 @@ import { supabase } from '../lib/supabase';
 import type { SyncOperation } from '../types';
 import { useStore } from '../store';
 
+const localMutationIds = new Map<string, number>();
+
 /**
  * Unified Offline Sync Engine
  * 
@@ -10,6 +12,34 @@ import { useStore } from '../store';
  * background retry processing, and cloud database reconciliation behind a simple dispatch interface.
  */
 export const SyncEngine = {
+    /**
+     * Mark an entity ID as locally mutated on this device.
+     */
+    trackLocalMutation: (id: string) => {
+        if (!id) return;
+        localMutationIds.set(id, Date.now());
+        const now = Date.now();
+        for (const [key, timestamp] of localMutationIds.entries()) {
+            if (now - timestamp > 30000) {
+                localMutationIds.delete(key);
+            }
+        }
+    },
+
+    /**
+     * Check if an entity ID was mutated locally on this device recently.
+     */
+    isLocalMutation: (id: string): boolean => {
+        if (!id) return false;
+        const timestamp = localMutationIds.get(id);
+        if (!timestamp) return false;
+        if (Date.now() - timestamp > 30000) {
+            localMutationIds.delete(id);
+            return false;
+        }
+        return true;
+    },
+
     /**
      * Dispatch a database mutation command.
      * Executes immediately if online; queues for retry if offline or network error occurs.
@@ -20,10 +50,17 @@ export const SyncEngine = {
         payload: any;
         match?: { column: string; value: any };
     }): Promise<void> => {
+        if (op.payload?.id) {
+            SyncEngine.trackLocalMutation(op.payload.id);
+        } else if (op.match?.value) {
+            SyncEngine.trackLocalMutation(op.match.value);
+        }
+
         if (!navigator.onLine) {
             SyncEngine.queueOperation(op);
             return;
         }
+
 
         try {
             let query = supabase.from(op.table)[op.action](op.payload);
