@@ -85,10 +85,24 @@ export const PushSubscriptionService = {
 
     try {
       // Ensure Service Worker registration exists on iOS PWA
-      let reg = await navigator.serviceWorker.getRegistration();
+      let reg: ServiceWorkerRegistration | undefined;
+      try {
+        reg = await Promise.race([
+          navigator.serviceWorker.ready,
+          new Promise<undefined>((resolve) => setTimeout(() => resolve(undefined), 2000)),
+        ]);
+      } catch (_e) {
+        // Fall through
+      }
+
+      if (!reg) {
+        reg = await navigator.serviceWorker.getRegistration();
+      }
+
       if (!reg) {
         const isDev = import.meta.env.DEV;
-        reg = await navigator.serviceWorker.register('/sw.js', {
+        const swUrl = isDev ? '/src/sw.ts' : '/sw.js';
+        reg = await navigator.serviceWorker.register(swUrl, {
           scope: '/',
           type: isDev ? 'module' : 'classic',
         });
