@@ -105,4 +105,39 @@ export const NotificationCenter = {
       }
     }
   },
+
+  /**
+   * Triggers the remote Edge Function `send-push` to deliver OS notifications (via APNs/FCM)
+   * to family devices even when the app is swiped away or closed.
+   */
+  sendRemotePushNotification: async (payload: {
+    familyId: string;
+    title: string;
+    body: string;
+    url?: string;
+    excludeDeviceId?: string;
+  }): Promise<void> => {
+    if (!payload.familyId) return;
+
+    try {
+      const { supabase } = await import('../lib/supabase');
+      const { data, error } = await supabase.functions.invoke('send-push', {
+        body: {
+          family_id: payload.familyId,
+          title: payload.title,
+          body: payload.body,
+          url: payload.url || '/',
+          exclude_device_id: payload.excludeDeviceId,
+        },
+      });
+
+      if (error) {
+        console.warn('Failed to invoke send-push Edge Function:', error);
+      } else {
+        console.log('✅ Remote push notification sent to family devices:', data);
+      }
+    } catch (err) {
+      console.warn('Error sending remote push notification:', err);
+    }
+  },
 };

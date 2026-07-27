@@ -139,25 +139,27 @@ async function processBackgroundSyncQueue(): Promise<void> {
 
 // 6. Remote Web Push Notification Handler
 self.addEventListener('push', (event) => {
-  if (!event.data) return;
-
-  try {
-    const payload = event.data.json();
-    const title = payload.title || 'ChoreQuest';
-    const options: NotificationOptions = {
-      body: payload.body || '',
-      icon: payload.icon || '/pwa-192x192.png',
-      badge: payload.badge || '/favicon-196.png',
-      tag: payload.tag || `push-${Date.now()}`,
-      data: {
-        url: payload.url || '/',
-      },
-    };
-
-    event.waitUntil(self.registration.showNotification(title, options));
-  } catch (err) {
-    console.error('Failed to process incoming Web Push payload:', err);
+  let payload: any = {};
+  if (event.data) {
+    try {
+      payload = event.data.json();
+    } catch (_e) {
+      payload = { title: 'ChoreQuest', body: event.data.text() };
+    }
   }
+
+  const title = payload.title || 'ChoreQuest';
+  const options: NotificationOptions = {
+    body: payload.body || 'New notification',
+    icon: payload.icon || '/pwa-192x192.png',
+    badge: payload.badge || '/favicon-196.png',
+    tag: payload.tag || `push-${Date.now()}`,
+    data: {
+      url: payload.url || '/',
+    },
+  };
+
+  event.waitUntil(self.registration.showNotification(title, options));
 });
 
 // 7. Notification Click Handler (Focus/Open Tab)

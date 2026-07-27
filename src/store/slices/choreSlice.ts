@@ -146,7 +146,7 @@ export const createChoreSlice = (set: StoreSet, get: StoreGet): ChoreSlice => ({
   },
 
   toggleAssignment: async (id) => {
-    const { familyId, assignments, chores, safeSync } = get();
+    const { familyId, assignments, chores, profiles, safeSync } = get();
     const a = assignments.find((a) => a.id === id);
     if (!a || a.verifiedAt) return;
     const c = chores.find((c) => c.id === a.choreId);
@@ -161,13 +161,24 @@ export const createChoreSlice = (set: StoreSet, get: StoreGet): ChoreSlice => ({
           : x
       ),
     });
-    if (familyId)
+    if (familyId) {
       await safeSync(
         'assignments',
         'update',
         { completed: isCompleting, completed_at: isCompleting ? now : null },
         { column: 'id', value: id }
       );
+      if (isCompleting) {
+        const child = profiles.find((p) => p.id === a.childId);
+        import('../../services/NotificationCenter').then(({ NotificationCenter }) => {
+          NotificationCenter.sendRemotePushNotification({
+            familyId,
+            title: 'Quest Completed! 🎉',
+            body: `${child?.name || 'Child'} completed "${c.title}"!`,
+          });
+        });
+      }
+    }
   },
 
   approveAssignment: async (id) => {
