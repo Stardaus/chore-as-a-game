@@ -14,19 +14,27 @@ export const NotificationCenter = {
    */
   requestPermission: async (): Promise<boolean> => {
     if (!('Notification' in window)) {
-      alert('This browser does not support desktop notifications');
+      alert('This browser/device does not support Web Push notifications.');
       return false;
     }
 
     const permission = await Notification.requestPermission();
     if (permission === 'granted') {
       const { PushSubscriptionService } = await import('./PushSubscriptionService');
-      PushSubscriptionService.subscribe().catch((e) => {
-        console.warn('Failed to initialize push subscription:', e);
-      });
-      return true;
+      const res = await PushSubscriptionService.subscribe();
+      if (res.success) {
+        alert('✅ Push notifications registered successfully for this device!');
+        return true;
+      } else {
+        alert(`⚠️ Notification permission granted, but Web Push setup failed: ${res.message}`);
+        return false;
+      }
+    } else {
+      alert(
+        'Notification permission denied. Please allow notifications in iOS Settings -> Safari/Websites.'
+      );
+      return false;
     }
-    return false;
   },
 
   /**

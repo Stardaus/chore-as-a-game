@@ -64,22 +64,46 @@ export const PushSubscriptionService = {
   /**
    * Subscribe this device to VAPID Web Push notifications and save subscription payload to Supabase.
    */
-  subscribe: async (): Promise<PushSubscription | null> => {
+  subscribe: async (): Promise<{
+    success: boolean;
+    message?: string;
+    sub?: PushSubscription | null;
+  }> => {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-      console.warn('Web Push is not supported in this browser.');
-      return null;
+      const msg = 'Web Push is not supported in this browser/device.';
+      console.warn(msg);
+      return { success: false, message: msg };
     }
 
     const vapidPublicKey = import.meta.env.VITE_VAPID_PUBLIC_KEY;
     if (!vapidPublicKey) {
-      console.error(
-        '❌ VITE_VAPID_PUBLIC_KEY is not set in environment variables! Push subscription cancelled.'
-      );
-      return null;
+      const msg =
+        'VITE_VAPID_PUBLIC_KEY is missing in app build. Please set VITE_VAPID_PUBLIC_KEY in environment variables and rebuild.';
+      console.error('❌', msg);
+      return { success: false, message: msg };
     }
 
     try {
-      const reg = await navigator.serviceWorker.ready;
+      // Ensure Service Worker registration exists on iOS PWA
+      let reg = await navigator.serviceWorker.getRegistration();
+      if (!reg) {
+        reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+      }
+
+      // Wait until SW is active
+      if (reg.installing || reg.waiting) {
+        await new Promise<void>((resolve) => {
+          const sw = reg?.installing || reg?.waiting;
+          if (sw) {
+            sw.onstatechange = () => {
+              if (sw.state === 'activated') resolve();
+            };
+          } else {
+            resolve();
+          }
+        });
+      }
+
       let sub = await reg.pushManager.getSubscription();
 
       if (!sub) {
@@ -92,13 +116,14 @@ export const PushSubscriptionService = {
 
       const familyId = await getActiveFamilyId();
       if (!familyId) {
-        console.warn('⚠️ Cannot save push subscription: Device is not linked to any family yet.');
-        return sub;
+        const msg = 'Device is not linked to any family account yet.';
+        console.warn('⚠️', msg);
+        return { success: false, message: msg, sub };
       }
 
       const deviceId = await DeviceService.getDeviceId();
       const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-      const deviceName = isMobile ? 'Mobile Device' : 'Primary Device';
+      const deviceName = isMobile ? 'iPhone App' : 'Primary Device';
       const subJson = sub.toJSON();
 
       // Upsert device row with push_subscription in public.devices
@@ -115,14 +140,14 @@ export const PushSubscriptionService = {
 
       if (error) {
         console.error('❌ Failed to upsert push_subscription in devices table:', error);
-      } else {
-        console.log('✅ Push subscription successfully saved in devices table for:', deviceId);
+        return { success: false, message: `Database error: ${error.message}`, sub };
       }
 
-      return sub;
-    } catch (error) {
+      console.log('✅ Push subscription successfully saved in devices table for:', deviceId);
+      return { success: true, sub };
+    } catch (error: any) {
       console.error('❌ Error during Web Push subscription:', error);
-      return null;
+      return { success: false, message: error?.message || 'Push subscription failed.' };
     }
   },
 
@@ -135,10 +160,12 @@ export const PushSubscriptionService = {
     }
 
     try {
-      const reg = await navigator.serviceWorker.ready;
-      const sub = await reg.pushManager.getSubscription();
-      if (sub) {
-        await sub.unsubscribe();
+      const reg = await navigator.serviceWorker.getRegistration();
+      if (reg) {
+        const sub = await reg.pushManager.getSubscription();
+        if (sub) {
+          await sub.unsubscribe();
+        }
       }
 
       const deviceId = await DeviceService.getDeviceId();
