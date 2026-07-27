@@ -23,12 +23,18 @@ cleanupOutdatedCaches();
 precacheAndRoute(self.__WB_MANIFEST);
 
 // 2. Navigation fallback to /index.html for SPA routing
-const navigationHandler = createHandlerBoundToURL('/index.html');
-const navigationRoute = new NavigationRoute(navigationHandler, {
-  allowlist: [/^\/$/],
-  denylist: [/^\/api\//, /\.[a-z0-9]+$/i],
-});
-registerRoute(navigationRoute);
+try {
+  if (import.meta.env.PROD) {
+    const navigationHandler = createHandlerBoundToURL('/index.html');
+    const navigationRoute = new NavigationRoute(navigationHandler, {
+      allowlist: [/^\/$/],
+      denylist: [/^\/api\//, /\.[a-z0-9]+$/i],
+    });
+    registerRoute(navigationRoute);
+  }
+} catch (e) {
+  console.warn('[SW] Navigation route registration skipped:', e);
+}
 
 // 3. Runtime caching for DiceBear Avatars
 registerRoute(
