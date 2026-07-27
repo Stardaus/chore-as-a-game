@@ -89,7 +89,7 @@ export const PushSubscriptionService = {
       try {
         reg = await Promise.race([
           navigator.serviceWorker.ready,
-          new Promise<undefined>((resolve) => setTimeout(() => resolve(undefined), 2000)),
+          new Promise<undefined>((resolve) => setTimeout(() => resolve(undefined), 1000)),
         ]);
       } catch (_e) {
         // Fall through
@@ -101,9 +101,8 @@ export const PushSubscriptionService = {
 
       if (!reg) {
         const isDev = import.meta.env.DEV;
-        const swUrl = isDev ? '/src/sw.ts' : '/sw.js';
+        const swUrl = isDev ? '/dev-sw.js?dev-sw' : '/sw.js';
         reg = await navigator.serviceWorker.register(swUrl, {
-          scope: '/',
           type: isDev ? 'module' : 'classic',
         });
       }
