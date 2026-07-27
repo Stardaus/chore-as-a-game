@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
+import webPush from 'npm:web-push@3.6.7';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -25,6 +26,19 @@ serve(async (req) => {
       });
     }
 
+    if (!vapidPublicKey || !vapidPrivateKey) {
+      return new Response(
+        JSON.stringify({ error: 'VAPID keys (VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY) not set in Edge Function secrets' }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
+    // Configure VAPID details for RFC 8292 signing & payload encryption
+    webPush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey);
+
     const { family_id, title, body, url, tag, exclude_device_id } = await req.json();
 
     if (!family_id || !title) {
@@ -49,9 +63,7 @@ serve(async (req) => {
 
     const { data: devices, error: devErr } = await query;
 
-    if (devErr) {
-      throw devErr;
-    }
+    if (devErr) throw devErr;
 
     if (!devices || devices.length === 0) {
       return new Response(JSON.stringify({ message: 'No target push devices found', sent: 0 }), {
@@ -77,25 +89,15 @@ serve(async (req) => {
       if (!sub || !sub.endpoint) continue;
 
       try {
-        // Send Web Push payload using standard HTTP POST to subscription endpoint
-        // Note: Production VAPID headers can be generated via Web Push library or FCM
-        const res = await fetch(sub.endpoint, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            TTL: '86400',
-          },
-          body: payload,
-        });
-
-        if (res.status === 410 || res.status === 404) {
-          // Subscription expired/invalidated, clean up database row
-          await supabase.from('devices').update({ push_subscription: null }).eq('id', dev.id);
-        } else if (res.ok) {
-          successCount++;
-        }
-      } catch (err) {
+        // Send VAPID encrypted push notification using npm:web-push
+        await webPush.sendNotification(sub, payload);
+        successCount++;
+      } catch (err: any) {
         console.error(`Failed to deliver push to device ${dev.id}:`, err);
+        if (err.statusCode === 410 || err.statusCode === 404) {
+          // Subscription expired/invalidated by FCM/Apple, clean up database row
+          await supabase.from('devices').update({ push_subscription: null }).eq('id', dev.id);
+        }
       }
     }
 
