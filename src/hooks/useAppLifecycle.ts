@@ -92,7 +92,13 @@ export function useAppLifecycle() {
       if (targetFamilyId) {
         syncWithCloud(targetFamilyId);
         import('../services/DeviceService').then(({ DeviceService }) => {
-          DeviceService.ensureDeviceRegistered(targetFamilyId);
+          DeviceService.ensureDeviceRegistered(targetFamilyId).then(() => {
+            if ('Notification' in window && Notification.permission === 'granted') {
+              import('../services/PushSubscriptionService').then(({ PushSubscriptionService }) => {
+                PushSubscriptionService.subscribe();
+              });
+            }
+          });
         });
       } else if (fetchSuccessful && navigator.onLine) {
         if (familyId) {

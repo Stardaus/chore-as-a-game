@@ -129,21 +129,15 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
   const handleToggleNotifications = async () => {
     if (!notificationPrefs.enabled) {
-      if (!('Notification' in window)) {
-        alert('This browser does not support desktop notifications');
-        return;
-      }
-
-      const permission = await Notification.requestPermission();
-      if (permission === 'granted') {
+      const { NotificationCenter } = await import('../../../services/NotificationCenter');
+      const granted = await NotificationCenter.requestPermission();
+      if (granted) {
         setNotificationPrefs({ enabled: true });
-      } else {
-        alert(
-          'Permission denied. Please enable notifications in your browser settings to use this feature.'
-        );
       }
     } else {
       setNotificationPrefs({ enabled: false });
+      const { PushSubscriptionService } = await import('../../../services/PushSubscriptionService');
+      await PushSubscriptionService.unsubscribe();
     }
   };
 
