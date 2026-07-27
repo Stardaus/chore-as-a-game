@@ -22,6 +22,39 @@ export const DeviceService = {
   },
 
   /**
+   * Ensures this physical device is registered in the public.devices database table.
+   * Works for primary parent devices as well as secondary child devices.
+   */
+  ensureDeviceRegistered: async (familyId: string, customName?: string): Promise<string> => {
+    const deviceId = await DeviceService.getDeviceId();
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    const defaultName = isMobile ? 'Mobile Device' : 'Primary Device';
+    const name = customName || defaultName;
+
+    try {
+      const { error } = await supabase.from('devices').upsert(
+        {
+          id: deviceId,
+          family_id: familyId,
+          name,
+          last_seen_at: new Date().toISOString(),
+        },
+        { onConflict: 'id' }
+      );
+
+      if (error) {
+        console.warn('Failed to register device in database:', error);
+      } else {
+        console.log(`✅ Registered device (${name}) in family:`, familyId);
+      }
+    } catch (err) {
+      console.warn('Device registration error:', err);
+    }
+
+    return deviceId;
+  },
+
+  /**
    * Attempts to link this device to a family using a 6-digit join code.
    * Logic is executed server-side via RPC for maximum security and brute-force protection.
    *

@@ -28,7 +28,10 @@ serve(async (req) => {
 
     if (!vapidPublicKey || !vapidPrivateKey) {
       return new Response(
-        JSON.stringify({ error: 'VAPID keys (VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY) not set in Edge Function secrets' }),
+        JSON.stringify({
+          error:
+            'VAPID keys (VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY) not set in Edge Function secrets',
+        }),
         {
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },

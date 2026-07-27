@@ -1,5 +1,7 @@
 import { supabase } from '../lib/supabase';
 import { DeviceService } from './DeviceService';
+import { useStore } from '../store';
+import { get } from 'idb-keyval';
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
@@ -40,7 +42,13 @@ export const PushSubscriptionService = {
         });
       }
 
-      // Save subscription JSON payload to device row in Supabase
+      // Ensure the device row exists in public.devices before updating subscription
+      const activeFamilyId =
+        useStore.getState().familyId || (await get<string>('linked-family-id'));
+      if (activeFamilyId) {
+        await DeviceService.ensureDeviceRegistered(activeFamilyId);
+      }
+
       const deviceId = await DeviceService.getDeviceId();
       const subJson = sub.toJSON();
 

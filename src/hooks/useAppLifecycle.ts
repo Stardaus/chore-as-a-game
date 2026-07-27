@@ -91,6 +91,9 @@ export function useAppLifecycle() {
 
       if (targetFamilyId) {
         syncWithCloud(targetFamilyId);
+        import('../services/DeviceService').then(({ DeviceService }) => {
+          DeviceService.ensureDeviceRegistered(targetFamilyId);
+        });
       } else if (fetchSuccessful && navigator.onLine) {
         if (familyId) {
           console.log('🧹 Cleanup: Server confirmed device unlinked, clearing data.');
