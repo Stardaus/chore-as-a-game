@@ -4,123 +4,135 @@ import { Mappers } from '../../lib/mappers';
 import type { StoreSet, StoreGet, SyncSlice } from './types';
 import { SyncEngine } from '../../services/SyncEngine';
 
-
 export const createSyncSlice = (set: StoreSet, get: StoreGet): SyncSlice => ({
-    syncQueue: [],
-    familyId: null,
-    isSyncing: false,
+  syncQueue: [],
+  familyId: null,
+  isSyncing: false,
 
-    safeSync: async (table, action, payload, match) => {
-        await SyncEngine.dispatch({ table, action, payload, match });
-    },
+  safeSync: async (table, action, payload, match) => {
+    await SyncEngine.dispatch({ table, action, payload, match });
+  },
 
-    queueSyncOperation: (op) => {
-        set((state) => ({
-            syncQueue: [...state.syncQueue, { ...op, id: uuidv4(), timestamp: Date.now() }]
-        }));
-    },
+  queueSyncOperation: (op) => {
+    set((state) => ({
+      syncQueue: [...state.syncQueue, { ...op, id: uuidv4(), timestamp: Date.now() }],
+    }));
+  },
 
-    processSyncQueue: async () => {
-        await SyncEngine.processQueue();
-    },
+  processSyncQueue: async () => {
+    await SyncEngine.processQueue();
+  },
 
-    syncWithCloud: async (familyId: string) => {
-        if (!navigator.onLine) return;
-        
-        await ensureDeviceIdHeader();
-        set({ isSyncing: true, familyId });
-        try {
-            const [p, c, a, r, rd, f] = await Promise.all([
-                supabase.from('profiles').select('*').eq('family_id', familyId),
-                supabase.from('chores').select('*').eq('family_id', familyId),
-                supabase.from('assignments').select('*').eq('family_id', familyId),
-                supabase.from('rewards').select('*').eq('family_id', familyId),
-                supabase.from('redemptions').select('*').eq('family_id', familyId),
-                supabase.from('families').select('subscription_tier').eq('id', familyId).maybeSingle(),
-            ]);
+  syncWithCloud: async (familyId: string) => {
+    if (!navigator.onLine) return;
 
-            if (p.error || c.error || a.error || r.error || rd.error) {
-                console.warn('Sync failed for core family tables:', {
-                    pErr: p.error, cErr: c.error, aErr: a.error, rErr: r.error, rdErr: rd.error
-                });
-                return; 
-            }
+    await ensureDeviceIdHeader();
+    set({ isSyncing: true, familyId });
+    try {
+      const [p, c, a, r, rd, f] = await Promise.all([
+        supabase.from('profiles').select('*').eq('family_id', familyId),
+        supabase.from('chores').select('*').eq('family_id', familyId),
+        supabase.from('assignments').select('*').eq('family_id', familyId),
+        supabase.from('rewards').select('*').eq('family_id', familyId),
+        supabase.from('redemptions').select('*').eq('family_id', familyId),
+        supabase.from('families').select('subscription_tier').eq('id', familyId).maybeSingle(),
+      ]);
 
-            // Self-Healing Sync: If local profiles exist that haven't been inserted to Supabase PostgreSQL, push them now
-            const remoteProfiles = p.data || [];
-            const remoteProfileIds = new Set(remoteProfiles.map((x: any) => x.id));
-            const localProfiles = get().profiles;
-            const profilesToPush = localProfiles.filter(lp => !remoteProfileIds.has(lp.id));
+      if (p.error || c.error || a.error || r.error || rd.error) {
+        console.warn('Sync failed for core family tables:', {
+          pErr: p.error,
+          cErr: c.error,
+          aErr: a.error,
+          rErr: r.error,
+          rdErr: rd.error,
+        });
+        return;
+      }
 
-            if (profilesToPush.length > 0) {
-                for (const lp of profilesToPush) {
-                    await supabase.from('profiles').insert({
-                        id: lp.id,
-                        family_id: familyId,
-                        name: lp.name,
-                        avatar: lp.avatar,
-                        points: lp.points,
-                        xp: lp.xp,
-                        level: lp.level
-                    });
-                }
-                const { data: updatedProfiles } = await supabase.from('profiles').select('*').eq('family_id', familyId);
-                if (updatedProfiles) {
-                    remoteProfiles.push(...updatedProfiles.filter(up => !remoteProfileIds.has(up.id)));
-                }
-            }
+      // Self-Healing Sync: If local profiles exist that haven't been inserted to Supabase PostgreSQL, push them now
+      const remoteProfiles = p.data || [];
+      const remoteProfileIds = new Set(remoteProfiles.map((x: any) => x.id));
+      const localProfiles = get().profiles;
+      const profilesToPush = localProfiles.filter((lp) => !remoteProfileIds.has(lp.id));
 
-            set({
-                profiles: remoteProfiles,
-                chores: (c.data || []).map(Mappers.chore),
-                assignments: (a.data || []).map(Mappers.assignment),
-                rewards: r.data || [],
-                redemptions: (rd.data || []).map(Mappers.redemption),
-                isPremium: f.data?.subscription_tier === 'premium'
-            });
-        } catch (error) { 
-            console.error('Cloud Sync Error:', error); 
-        } finally { 
-            set({ isSyncing: false }); 
+      if (profilesToPush.length > 0) {
+        for (const lp of profilesToPush) {
+          await supabase.from('profiles').insert({
+            id: lp.id,
+            family_id: familyId,
+            name: lp.name,
+            avatar: lp.avatar,
+            points: lp.points,
+            xp: lp.xp,
+            level: lp.level,
+          });
         }
-    },
+        const { data: updatedProfiles } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('family_id', familyId);
+        if (updatedProfiles) {
+          remoteProfiles.push(...updatedProfiles.filter((up) => !remoteProfileIds.has(up.id)));
+        }
+      }
 
-    setFamilyId: (id) => set({ familyId: id }),
+      set({
+        profiles: remoteProfiles,
+        chores: (c.data || []).map(Mappers.chore),
+        assignments: (a.data || []).map(Mappers.assignment),
+        rewards: r.data || [],
+        redemptions: (rd.data || []).map(Mappers.redemption),
+        isPremium: f.data?.subscription_tier === 'premium',
+      });
+    } catch (error) {
+      console.error('Cloud Sync Error:', error);
+    } finally {
+      set({ isSyncing: false });
+    }
+  },
 
-    clearLocalData: () => set({ 
-        profiles: [], chores: [], assignments: [], rewards: [], redemptions: [], syncQueue: [],
-        familyId: null,
-        parentPin: '0000',
-        recoveryQuestion: '',
-        recoveryAnswer: '',
-        notificationPrefs: { enabled: false, badgeEnabled: true },
-        reminderSettings: { enabled: true, time: '21:00', lastSentDate: null }
+  setFamilyId: (id) => set({ familyId: id }),
+
+  clearLocalData: () =>
+    set({
+      profiles: [],
+      chores: [],
+      assignments: [],
+      rewards: [],
+      redemptions: [],
+      syncQueue: [],
+      familyId: null,
+      parentPin: '0000',
+      recoveryQuestion: '',
+      recoveryAnswer: '',
+      notificationPrefs: { enabled: false, badgeEnabled: true },
+      reminderSettings: { enabled: true, time: '21:00', lastSentDate: null },
     }),
 
-    wipeFamilyData: async () => {
-        const { familyId } = get();
-        
-        if (familyId && navigator.onLine) {
-            try {
-                const { error } = await supabase.rpc('wipe_family_data', { target_family_id: familyId });
-                if (error) throw error;
-                console.log('✅ Remote family data and devices wiped successfully.');
-            } catch (error) {
-                console.error('❌ Failed to wipe remote family data:', error);
-            }
-        } else if (familyId) {
-            get().queueSyncOperation({ 
-                id: uuidv4(),
-                table: 'rpc', 
-                action: 'delete', 
-                payload: { function: 'wipe_family_data', params: { target_family_id: familyId } },
-                timestamp: Date.now()
-            } as any);
-        }
+  wipeFamilyData: async () => {
+    const { familyId } = get();
 
-        get().clearLocalData();
-
-        const idb = await import('idb-keyval');
-        await idb.del('linked-family-id');
+    if (familyId && navigator.onLine) {
+      try {
+        const { error } = await supabase.rpc('wipe_family_data', { target_family_id: familyId });
+        if (error) throw error;
+        console.log('✅ Remote family data and devices wiped successfully.');
+      } catch (error) {
+        console.error('❌ Failed to wipe remote family data:', error);
+      }
+    } else if (familyId) {
+      get().queueSyncOperation({
+        id: uuidv4(),
+        table: 'rpc',
+        action: 'delete',
+        payload: { function: 'wipe_family_data', params: { target_family_id: familyId } },
+        timestamp: Date.now(),
+      } as any);
     }
+
+    get().clearLocalData();
+
+    const idb = await import('idb-keyval');
+    await idb.del('linked-family-id');
+  },
 });

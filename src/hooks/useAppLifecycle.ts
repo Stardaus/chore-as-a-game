@@ -15,112 +15,118 @@ import { get } from 'idb-keyval';
  * - Notification Center integration
  */
 export function useAppLifecycle() {
-    const { 
-        refreshAssignments, assignments, redemptions, notificationPrefs, 
-        syncWithCloud, familyId, setFamilyId, processSyncQueue, clearLocalData 
-    } = useStore();
-    
-    const { initialize: initializeAuth, loading: authLoading, session } = useAuthStore();
+  const {
+    refreshAssignments,
+    assignments,
+    redemptions,
+    notificationPrefs,
+    syncWithCloud,
+    familyId,
+    setFamilyId,
+    processSyncQueue,
+    clearLocalData,
+  } = useStore();
 
-    // 1. Initial Load: Auth and Refresh
-    useEffect(() => {
-        initializeAuth();
+  const { initialize: initializeAuth, loading: authLoading, session } = useAuthStore();
+
+  // 1. Initial Load: Auth and Refresh
+  useEffect(() => {
+    initializeAuth();
+    refreshAssignments();
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
         refreshAssignments();
-
-        const handleVisibilityChange = () => {
-            if (document.visibilityState === 'visible') {
-                refreshAssignments();
-                NotificationCenter.checkScheduledReminders();
-                if ('serviceWorker' in navigator) {
-                    navigator.serviceWorker.getRegistration().then(reg => {
-                        if (reg) reg.update();
-                    });
-                }
-            }
-        };
-
-        const handleOnline = async () => {
-            console.log('📡 Connection restored! Processing offline queue...');
-            await processSyncQueue();
-            const targetFamilyId = familyId || await get('linked-family-id');
-            if (targetFamilyId) {
-                syncWithCloud(targetFamilyId);
-            }
-        };
-
-        window.addEventListener('visibilitychange', handleVisibilityChange);
-        window.addEventListener('online', handleOnline);
-
-        if (navigator.onLine) {
-            handleOnline();
-        }
-
-        return () => {
-            window.removeEventListener('visibilitychange', handleVisibilityChange);
-            window.removeEventListener('online', handleOnline);
-        };
-    }, [refreshAssignments, initializeAuth, processSyncQueue, syncWithCloud, familyId]);
-
-    // 2. Cloud Sync Initializer
-    useEffect(() => {
-        const initSync = async () => {
-            let targetFamilyId = await get<string>('linked-family-id');
-            let fetchSuccessful = false;
-
-            if (!targetFamilyId && session?.user && navigator.onLine) {
-                try {
-                    const { useFamilyStore } = await import('../store/useFamilyStore');
-                    const familyId = await useFamilyStore.getState().fetchFamily();
-                    if (familyId) {
-                        targetFamilyId = familyId;
-                        fetchSuccessful = true;
-                    }
-                } catch (e) {
-                    console.warn("Network error during family session verification.");
-                }
-            } else if (targetFamilyId) {
-                fetchSuccessful = true;
-            }
-
-            if (targetFamilyId) {
-                syncWithCloud(targetFamilyId);
-            } else if (fetchSuccessful && navigator.onLine) {
-                if (familyId) {
-                    console.log("🧹 Cleanup: Server confirmed device unlinked, clearing data.");
-                    clearLocalData();
-                } else {
-                    setFamilyId(null);
-                }
-            }
-        };
-
-        if (!authLoading) {
-            initSync();
-        }
-    }, [session, authLoading, syncWithCloud, setFamilyId, familyId, clearLocalData]);
-
-    // 3. Real-time Subscription
-    useEffect(() => {
-        if (familyId) {
-            const cleanup = SyncService.initRealtime(familyId);
-            return cleanup;
-        }
-    }, [familyId]);
-
-    // 4. Global Badging Logic
-    useEffect(() => {
-        NotificationCenter.updateBadgeFromState();
-    }, [assignments, redemptions, notificationPrefs.badgeEnabled]);
-
-    // 5. Global Reminder Heartbeat
-    useEffect(() => {
-        const interval = setInterval(() => {
-            NotificationCenter.checkScheduledReminders();
-        }, 60000);
         NotificationCenter.checkScheduledReminders();
-        return () => clearInterval(interval);
-    }, []);
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.getRegistration().then((reg) => {
+            if (reg) reg.update();
+          });
+        }
+      }
+    };
 
-    return { authLoading };
+    const handleOnline = async () => {
+      console.log('📡 Connection restored! Processing offline queue...');
+      await processSyncQueue();
+      const targetFamilyId = familyId || (await get('linked-family-id'));
+      if (targetFamilyId) {
+        syncWithCloud(targetFamilyId);
+      }
+    };
+
+    window.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('online', handleOnline);
+
+    if (navigator.onLine) {
+      handleOnline();
+    }
+
+    return () => {
+      window.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('online', handleOnline);
+    };
+  }, [refreshAssignments, initializeAuth, processSyncQueue, syncWithCloud, familyId]);
+
+  // 2. Cloud Sync Initializer
+  useEffect(() => {
+    const initSync = async () => {
+      let targetFamilyId = await get<string>('linked-family-id');
+      let fetchSuccessful = false;
+
+      if (!targetFamilyId && session?.user && navigator.onLine) {
+        try {
+          const { useFamilyStore } = await import('../store/useFamilyStore');
+          const familyId = await useFamilyStore.getState().fetchFamily();
+          if (familyId) {
+            targetFamilyId = familyId;
+            fetchSuccessful = true;
+          }
+        } catch (e) {
+          console.warn('Network error during family session verification.');
+        }
+      } else if (targetFamilyId) {
+        fetchSuccessful = true;
+      }
+
+      if (targetFamilyId) {
+        syncWithCloud(targetFamilyId);
+      } else if (fetchSuccessful && navigator.onLine) {
+        if (familyId) {
+          console.log('🧹 Cleanup: Server confirmed device unlinked, clearing data.');
+          clearLocalData();
+        } else {
+          setFamilyId(null);
+        }
+      }
+    };
+
+    if (!authLoading) {
+      initSync();
+    }
+  }, [session, authLoading, syncWithCloud, setFamilyId, familyId, clearLocalData]);
+
+  // 3. Real-time Subscription
+  useEffect(() => {
+    if (familyId) {
+      const cleanup = SyncService.initRealtime(familyId);
+      return cleanup;
+    }
+  }, [familyId]);
+
+  // 4. Global Badging Logic
+  useEffect(() => {
+    NotificationCenter.updateBadgeFromState();
+  }, [assignments, redemptions, notificationPrefs.badgeEnabled]);
+
+  // 5. Global Reminder Heartbeat
+  useEffect(() => {
+    const interval = setInterval(() => {
+      NotificationCenter.checkScheduledReminders();
+    }, 60000);
+    NotificationCenter.checkScheduledReminders();
+    return () => clearInterval(interval);
+  }, []);
+
+  return { authLoading };
 }
-

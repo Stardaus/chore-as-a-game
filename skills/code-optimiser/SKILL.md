@@ -20,7 +20,9 @@ When triggered, follow this systematic approach to analyze and optimize code.
 ## Optimization Workflow
 
 ### 1. Analysis Phase
+
 Scan the target file(s) for "Code Smells":
+
 - **Long Methods/Components:** Functions over 50 lines or components over 200 lines.
 - **Deep Nesting:** If/else or loop nesting deeper than 3 levels.
 - **Large Prop Lists:** React components receiving too many props (consider context or state management).
@@ -29,7 +31,9 @@ Scan the target file(s) for "Code Smells":
 - **Complex Conditionals:** Long boolean expressions that could be simplified or moved to named variables/functions.
 
 ### 2. Strategy Phase
+
 Propose specific refactoring steps. Common strategies include:
+
 - **Extract Function/Component:** Breaking down large blocks into smaller units.
 - **Simplify Conditionals:** Using guard clauses (early returns) to flatten logic.
 - **Standardize Types:** Ensuring TypeScript interfaces are clean, reused, and consistent.
@@ -37,7 +41,9 @@ Propose specific refactoring steps. Common strategies include:
 - **Memoization:** Identifying unnecessary re-renders or expensive calculations (useMemo, memo).
 
 ### 3. Execution Phase
+
 Apply changes surgically. Ensure:
+
 - The behavior remains identical (no regressions).
 - The code follows the existing project style.
 - Tests (if any) are updated or new ones are added to verify the refactor.
@@ -50,17 +56,21 @@ When providing an optimization report, structure your response as follows:
 # Code Optimization Report: [File/Module Name]
 
 ## 1. Code Health Analysis
+
 - **Smell 1:** [Description]
 - **Smell 2:** [Description]
 
 ## 2. Refactoring Strategy
+
 - **Step 1:** [Specific action, e.g., "Extract RenderItem to a standalone component"]
 - **Step 2:** [Specific action, e.g., "Replace nested if/else with guard clauses"]
 
 ## 3. Optimized Implementation
+
 [The improved code block]
 
 ## 4. Key Improvements
+
 - **Maintainability:** [How this fix makes it easier to update later]
 - **Readability:** [Comparison of before vs after logic clarity]
 - **Performance:** [Any speed or memory gains]
@@ -69,6 +79,7 @@ When providing an optimization report, structure your response as follows:
 ## Specialized Guidance
 
 ### React/TypeScript Best Practices
+
 - **Custom Hooks:** Extract complex `useEffect` or state logic into domain-specific hooks.
 - **Discriminated Unions:** Use for complex state or API responses.
 - **Type Safety:** Avoid `any` at all costs. Use `unknown` or specific generics.

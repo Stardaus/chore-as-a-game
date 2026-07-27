@@ -1,0 +1,9 @@
+{
+  "threshold": 5,
+  "minTokens": 50,
+  "minLines": 5,
+  "path": ["src"],
+  "ignore": ["src/sw.ts", "src/__tests__/**"],
+  "format": ["typescript", "tsx", "css"],
+  "reporters": ["console"]
+}

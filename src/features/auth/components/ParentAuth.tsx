@@ -3,7 +3,13 @@ import { supabase } from '../../../lib/supabase';
 import { useAuthStore } from '../../../store/useAuthStore';
 import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../../components/ui/Card';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from '../../../components/ui/Card';
 import { Mail, Lock, ShieldCheck, Sparkles, AlertCircle, Clock } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 
@@ -24,7 +30,7 @@ function formatCooldownTime(totalSeconds: number): string {
 
 /**
  * Authentication screen for Parents.
- * 
+ *
  * Provides a unified toggle for Sign In and Sign Up.
  * Communicates directly with Supabase Auth.
  */
@@ -47,7 +53,9 @@ export function ParentAuth() {
           return null;
         }
         const next = prev - 1;
-        setError(`Email rate limit exceeded. Please wait ${formatCooldownTime(next)} before trying again.`);
+        setError(
+          `Email rate limit exceeded. Please wait ${formatCooldownTime(next)} before trying again.`
+        );
         return next;
       });
     }, 1000);
@@ -59,9 +67,14 @@ export function ParentAuth() {
     const message = err.message || '';
     const lower = message.toLowerCase();
 
-    if (lower.includes('rate limit') || lower.includes('too many requests') || lower.includes('once every') || err.status === 429) {
+    if (
+      lower.includes('rate limit') ||
+      lower.includes('too many requests') ||
+      lower.includes('once every') ||
+      err.status === 429
+    ) {
       let seconds = 3600; // Default to 60 minutes for Supabase email hourly rate limit
-      
+
       const secMatch = message.match(/(\d+)\s*seconds?/i);
       const minMatch = message.match(/(\d+)\s*minutes?/i);
       const hrMatch = message.match(/(\d+)\s*hours?/i);
@@ -75,7 +88,9 @@ export function ParentAuth() {
       }
 
       setCooldown(seconds);
-      setError(`Email rate limit exceeded. Please wait ${formatCooldownTime(seconds)} before trying again.`);
+      setError(
+        `Email rate limit exceeded. Please wait ${formatCooldownTime(seconds)} before trying again.`
+      );
     } else {
       setError(message || 'An error occurred during authentication.');
     }
@@ -90,12 +105,12 @@ export function ParentAuth() {
 
     try {
       if (isSignUp) {
-        const { data, error } = await supabase.auth.signUp({ 
-          email, 
+        const { data, error } = await supabase.auth.signUp({
+          email,
           password,
           options: {
-            data: { role: 'parent' }
-          }
+            data: { role: 'parent' },
+          },
         });
         if (error) throw error;
 
@@ -122,7 +137,7 @@ export function ParentAuth() {
 
   const handleForgotPassword = async () => {
     if (!email) {
-      setError("Please enter your email address first.");
+      setError('Please enter your email address first.');
       return;
     }
     if (cooldown !== null && cooldown > 0) return;
@@ -160,17 +175,23 @@ export function ParentAuth() {
               {isSignUp ? 'Create Family Account' : 'Welcome Back, Admin'}
             </CardTitle>
             <CardDescription className="text-center font-medium text-indigo-600/70">
-              {isSignUp ? 'Start your multi-device journey' : 'Sign in to manage your family quests'}
+              {isSignUp
+                ? 'Start your multi-device journey'
+                : 'Sign in to manage your family quests'}
             </CardDescription>
           </CardHeader>
-          
+
           <CardContent className="p-8">
             <form onSubmit={handleSubmit} className="space-y-5">
               {error && (
-                <div className={cn(
-                  "p-4 rounded-2xl border flex items-start gap-3 animate-in fade-in slide-in-from-top-2",
-                  cooldown !== null && cooldown > 0 ? "bg-amber-50 border-amber-200 text-amber-900" : "bg-red-50 border-red-100 text-red-700"
-                )}>
+                <div
+                  className={cn(
+                    'p-4 rounded-2xl border flex items-start gap-3 animate-in fade-in slide-in-from-top-2',
+                    cooldown !== null && cooldown > 0
+                      ? 'bg-amber-50 border-amber-200 text-amber-900'
+                      : 'bg-red-50 border-red-100 text-red-700'
+                  )}
+                >
                   {cooldown !== null && cooldown > 0 ? (
                     <Clock className="h-5 w-5 text-amber-600 shrink-0 mt-0.5 animate-pulse" />
                   ) : (
@@ -205,8 +226,8 @@ export function ParentAuth() {
                 </div>
               </div>
 
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 className="w-full h-14 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white text-lg font-bold shadow-lg shadow-indigo-200 transition-all disabled:opacity-50"
                 disabled={loading || (cooldown !== null && cooldown > 0)}
               >
@@ -218,7 +239,11 @@ export function ParentAuth() {
                   </span>
                 ) : (
                   <span className="flex items-center justify-center gap-2">
-                    {isSignUp ? <Sparkles className="h-5 w-5" /> : <ShieldCheck className="h-5 w-5" />}
+                    {isSignUp ? (
+                      <Sparkles className="h-5 w-5" />
+                    ) : (
+                      <ShieldCheck className="h-5 w-5" />
+                    )}
                     {isSignUp ? 'Create Family' : 'Enter Dashboard'}
                   </span>
                 )}
@@ -232,7 +257,11 @@ export function ParentAuth() {
                     disabled={loading || resetSent || (cooldown !== null && cooldown > 0)}
                     className="text-xs font-medium text-slate-500 hover:text-indigo-600 transition-colors disabled:opacity-50"
                   >
-                    {resetSent ? 'Reset link sent' : cooldown !== null && cooldown > 0 ? `Retry available in ${formatCooldownTime(cooldown)}` : 'Forgot Password?'}
+                    {resetSent
+                      ? 'Reset link sent'
+                      : cooldown !== null && cooldown > 0
+                        ? `Retry available in ${formatCooldownTime(cooldown)}`
+                        : 'Forgot Password?'}
                   </button>
                 </div>
               )}
@@ -244,9 +273,7 @@ export function ParentAuth() {
                 onClick={() => setIsSignUp(!isSignUp)}
                 className="text-sm font-bold text-indigo-600 hover:text-indigo-800 transition-colors"
               >
-                {isSignUp 
-                  ? 'Already have an account? Sign In' 
-                  : 'New family? Create an account'}
+                {isSignUp ? 'Already have an account? Sign In' : 'New family? Create an account'}
               </button>
             </div>
           </CardContent>

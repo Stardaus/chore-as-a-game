@@ -9,7 +9,7 @@ interface AuthState {
   isDeviceLinked: boolean;
   loading: boolean;
   initialized: boolean;
-  
+
   // Actions
   setSession: (session: Session | null) => void;
   setDeviceLinked: (linked: boolean) => void;
@@ -26,11 +26,12 @@ export const useAuthStore = create<AuthState>((set) => ({
   loading: true,
   initialized: false,
 
-  setSession: (session) => set({ 
-    session, 
-    user: session?.user ?? null, 
-    loading: false 
-  }),
+  setSession: (session) =>
+    set({
+      session,
+      user: session?.user ?? null,
+      loading: false,
+    }),
 
   setDeviceLinked: (linked) => set({ isDeviceLinked: linked }),
 
@@ -39,9 +40,9 @@ export const useAuthStore = create<AuthState>((set) => ({
     const linkedFamilyId = await idb.get('linked-family-id');
     const { session } = useAuthStore.getState();
     const isLinked = !!linkedFamilyId || !!session;
-    
+
     set({ isDeviceLinked: isLinked });
-    
+
     // If we have a local ID, tell the main store to sync
     if (linkedFamilyId) {
       useStore.getState().syncWithCloud(linkedFamilyId);
@@ -74,20 +75,22 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   initialize: async () => {
-    const { data: { session } } = await supabase.auth.getSession();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
     const idb = await import('idb-keyval');
     const linkedFamilyId = await idb.get('linked-family-id');
 
-    set({ 
-      session, 
-      user: session?.user ?? null, 
+    set({
+      session,
+      user: session?.user ?? null,
       isDeviceLinked: !!linkedFamilyId,
-      loading: false, 
-      initialized: true 
+      loading: false,
+      initialized: true,
     });
 
     supabase.auth.onAuthStateChange((_event, session) => {
       set({ session, user: session?.user ?? null, loading: false });
     });
-  }
+  },
 }));

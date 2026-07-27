@@ -20,9 +20,11 @@ CREATE TABLE IF NOT EXISTS public.devices (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     family_id UUID REFERENCES public.families(id) ON DELETE CASCADE NOT NULL,
     name TEXT NOT NULL,
+    push_subscription JSONB,
     last_seen_at TIMESTAMPTZ DEFAULT now() NOT NULL,
     created_at TIMESTAMPTZ DEFAULT now() NOT NULL
 );
+ALTER TABLE public.devices ADD COLUMN IF NOT EXISTS push_subscription JSONB;
 
 CREATE TABLE IF NOT EXISTS public.profiles (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

@@ -7,8 +7,12 @@ import { ToastContainer } from './components/ui/ToastContainer';
 import { useAppLifecycle } from './hooks/useAppLifecycle';
 
 // Lazy load heavy dashboard pages
-const ParentDashboard = lazy(() => import('./pages/ParentDashboard').then(m => ({ default: m.ParentDashboard })));
-const ChildDashboard = lazy(() => import('./pages/ChildDashboard').then(m => ({ default: m.ChildDashboard })));
+const ParentDashboard = lazy(() =>
+  import('./pages/ParentDashboard').then((m) => ({ default: m.ParentDashboard }))
+);
+const ChildDashboard = lazy(() =>
+  import('./pages/ChildDashboard').then((m) => ({ default: m.ChildDashboard }))
+);
 
 /**
  * Global Loading State for code-splitting and Auth.
@@ -41,6 +45,5 @@ function App() {
     </BrowserRouter>
   );
 }
-
 
 export default App;

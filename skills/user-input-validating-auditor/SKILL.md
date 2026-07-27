@@ -29,16 +29,20 @@ When triggered, follow this systematic workflow to audit the application's input
 ## Auditing Workflow
 
 ### 1. Discovery Phase
+
 Identify all components containing `<input>`, `<textarea>`, `<select>`, or form handling logic (e.g., `useState` for titles/points).
 
 ### 2. Evaluation Phase
+
 Compare the current implementation against the **Core Auditing Criteria**. Specifically look for:
+
 - Missing `maxLength` on text inputs.
 - Missing `min`/`max` on numeric inputs.
 - Lack of sanitization (trimming whitespace, filtering scripts).
 - Incomplete error handling in the submission logic.
 
 ### 3. Reporting Phase
+
 Present a thorough report structured according to the **Standard Output Format** below.
 
 ## Standard Output Format
@@ -49,20 +53,24 @@ When providing an audit, structure your response as follows:
 # User Input Validation Audit: [Module/Component Name]
 
 ## 1. Input Discovery
+
 - **Location:** [File Path & Line Number]
 - **Input Type:** [e.g., Text, Number, PIN]
 - **Purpose:** [e.g., Chore Title, Reward Cost]
 
 ## 2. Evaluation
+
 - **Current State:** [Describe existing validation logic or lack thereof]
 - **Issue:** [Explain why this is a safety or logical risk]
 - **Severity:** [Low | Medium | High]
 
 ## 3. Rectification Options
+
 - **Option A (Quick Fix):** [e.g., Adding HTML attributes like maxLength]
 - **Option B (Robust):** [e.g., Implementing a validation schema or library like Zod]
 
 ## 4. Expert Recommendation
+
 [Specific code-level recommendation for this input point]
 ```
 

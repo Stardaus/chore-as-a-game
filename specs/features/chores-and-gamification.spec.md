@@ -2,13 +2,14 @@
 
 **Specification Version:** 1.0.0  
 **Project:** ChoreQuest  
-**Status:** Active  
+**Status:** Active
 
 ---
 
 ## 1. Chore Management Specification
 
 ### 1.1 Creation & Editing
+
 - **Inputs:** `title`, `description`, `points` (1–1000), `category`, `recurrence`, `requiresApproval`.
 - **Validation:**
   - `title` must be non-empty and max 50 characters.
@@ -16,6 +17,7 @@
   - Free Tier limits: Maximum 5 active chores allowed unless `isPremium === true`.
 
 ### 1.2 Assignment & Recurrence
+
 - A chore can be assigned to one or more Child profiles via `assignChore(choreId, childId)`.
 - When assigned, a new `Assignment` record is created with `completed: false`.
 - Duplicate active (uncompleted) assignments for the same `(choreId, childId)` pair are prevented.
@@ -25,6 +27,7 @@
 ## 2. Gamification & Progression Engine
 
 ### 2.1 Point & XP Calculation Rules
+
 - **Points:** Spendable in-game currency earned upon chore completion.
 - **Experience Points (XP):** Cumulative progress metric (`lifetime XP`). XP only increases and never decreases when spending points on rewards.
 
@@ -32,6 +35,7 @@ $$\text{New XP} = \text{Current XP} + \text{Chore Points}$$
 $$\text{New Points} = \text{Current Points} + \text{Chore Points}$$
 
 ### 2.2 Level Progression Formula
+
 Leveling up occurs automatically based on total accumulated XP:
 
 $$\text{Level} = \left\lfloor \frac{\text{XP}}{100} \right\rfloor + 1$$
@@ -42,6 +46,7 @@ $$\text{Level} = \left\lfloor \frac{\text{XP}}{100} \right\rfloor + 1$$
 - **Level N:** $(N-1) \times 100$ XP
 
 ### 2.3 Verification & Reward Triggers
+
 1. **Auto-Verified Chores (`requiresApproval === false`):**
    - Toggling completed immediately awards `points` and `XP` to the profile.
 2. **Approval-Required Chores (`requiresApproval === true`):**
@@ -54,10 +59,12 @@ $$\text{Level} = \left\lfloor \frac{\text{XP}}{100} \right\rfloor + 1$$
 ## 3. Reward Marketplace Specification
 
 ### 3.1 Reward Creation & Catalog
+
 - **Fields:** `title`, `cost` (points), `icon`, `category`.
 - Free tier limit: Maximum 3 active rewards.
 
 ### 3.2 Redemption Flow
+
 1. Child selects reward and clicks "Redeem".
 2. **Pre-condition Check:** `profile.points >= reward.cost`. If false, redemption is blocked.
 3. **Pending Request:** Creates a `Redemption` record with `approved: false`.

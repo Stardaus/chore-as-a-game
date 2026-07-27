@@ -1,0 +1,64 @@
+name: Quality & Security Gate
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  quality-gate:
+    name: Quality & Security Checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Code Formatting Check (Prettier)
+        run: npm run format:check
+
+      - name: ESLint & Security Rules
+        run: npm run lint
+
+      - name: TypeScript Type Checking
+        run: npx tsc -b
+
+      - name: Secret Detection (Secretlint)
+        run: npm run security:secrets
+
+      - name: Vitest Unit Tests & Istanbul Coverage
+        run: npm run test:coverage
+
+      - name: Dependency Audit (audit-ci)
+        run: npm run security:deps
+
+      - name: Copy-Paste Code Detection (jscpd)
+        run: npm run detect:duplicates
+
+      - name: Dead Code & Unused Export Detection (knip)
+        run: npm run detect:deadcode
+
+      - name: Production Build
+        run: npm run build
+
+  sast:
+    name: Semgrep SAST Analysis
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Semgrep Analysis
+        uses: semgrep/semgrep-action@v1
+        with:
+          config: >-
+            p/typescript
+            p/react
+            p/owasp-top-ten
+            p/secrets

@@ -2,7 +2,7 @@
 
 **Specification Version:** 1.0.0  
 **Project:** ChoreQuest (Gamified Family Chore Management PWA)  
-**Status:** Active  
+**Status:** Active
 
 ---
 
@@ -15,6 +15,7 @@ ChoreQuest transforms household chores into an engaging, gamified RPG experience
 ## 2. Technology Stack & Technical Constraints
 
 ### 2.1 Core Stack
+
 - **UI Framework:** React 19 + TypeScript (`vite-plugin-react`)
 - **Build System:** Vite
 - **Styling:** Tailwind CSS + Lucide Icons + `clsx` / `tailwind-merge`
@@ -24,6 +25,7 @@ ChoreQuest transforms household chores into an engaging, gamified RPG experience
 - **Progressive Web App:** Workbox via `vite-plugin-pwa`
 
 ### 2.2 Project Guidelines & Technical Rules
+
 - **Obfuscation:** Production builds MUST perform code minification/obfuscation (`vite.config.ts` build settings).
 - **Data Protection:** Client-side storage MUST use encrypted/durable storage adapters for IndexedDB.
 - **Workflow:** All feature modifications follow Spec-Driven Development and strict workflow planning via `docs/PLAN.md`.
@@ -65,4 +67,3 @@ The system functionality is specified across the following sub-documents:
 - [specs/features/offline-and-sync.spec.md](file:///Users/nina/development/projects/chore-as-a-game/specs/features/offline-and-sync.spec.md): Offline-first queue, Supabase real-time sync, and data preservation.
 - [specs/features/notifications-and-badging.spec.md](file:///Users/nina/development/projects/chore-as-a-game/specs/features/notifications-and-badging.spec.md): PWA notifications, scheduled reminders, and App Badging API.
 - [specs/features/security-and-freemium.spec.md](file:///Users/nina/development/projects/chore-as-a-game/specs/features/security-and-freemium.spec.md): Parent authentication, forgot PIN recovery, and tier limits.
-

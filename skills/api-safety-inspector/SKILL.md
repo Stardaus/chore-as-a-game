@@ -29,16 +29,20 @@ When triggered, follow this workflow to audit the API landscape.
 ## Inspection Workflow
 
 ### 1. Discovery Phase
+
 Identify all API call sites (e.g., `supabase.from()`, `fetch()`, `axios`). Review the network layer configuration (`src/lib/supabase.ts`, etc.).
 
 ### 2. Risk Assessment
+
 Evaluate each call site against the **Core Inspection Criteria**. Specifically look for:
+
 - Missing RLS policies in the database schema.
 - Over-fetching data (fetching columns that aren't needed).
 - Hardcoded sensitive information.
 - Lack of client-side request throttling for heavy operations.
 
 ### 3. Reporting Phase
+
 Present a comprehensive report structured according to the format below.
 
 ## Standard Output Format
@@ -47,9 +51,11 @@ Present a comprehensive report structured according to the format below.
 # API Safety Inspection Report: [API Name/Service]
 
 ## 1. Executive Summary
+
 [Brief overview of the API's safety posture]
 
 ## 2. Detailed Findings
+
 - **[Finding 1]:** [e.g., RLS bypass vulnerability]
   - **Risk:** [Description of impact]
   - **Severity:** [Critical | High | Medium | Low]
@@ -58,14 +64,17 @@ Present a comprehensive report structured according to the format below.
   - **Severity:** [Medium]
 
 ## 3. Rectification Options
+
 - **Option A (Infrastructure):** [e.g., Enabling Supabase default rate limits]
 - **Option B (Code-Level):** [e.g., Implementing request debouncing]
 
 ## 4. Expert Recommendation
+
 [The most effective course of action for this specific project]
 ```
 
 ## Specialized Guidance for Supabase/Cloud APIs
+
 - Ensure that "Service Role" keys are **never** used in the frontend.
 - Check that all tables have RLS enabled.
 - Recommend using Stored Procedures (RPC) for complex operations that require server-side logic validation.

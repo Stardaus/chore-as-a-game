@@ -1,11 +1,13 @@
 # Product Requirements Document (PRD)
 
 ## Product Name (Working Title)
+
 **ChoreQuest**
 
 ---
 
 ## 1. Problem Statement
+
 Parents often struggle to motivate children to complete chores and daily responsibilities consistently. Traditional to-do lists lack engagement, while ad-hoc reward systems are inconsistent and difficult to manage. There is a need for a **parent-controlled, child-friendly, offline-first gamified system** that transforms chores into engaging quests while maintaining healthy motivation and clear boundaries.
 
 ---
@@ -13,9 +15,11 @@ Parents often struggle to motivate children to complete chores and daily respons
 ## 2. Target Users
 
 ### Primary Users
+
 - Parents with children aged **4–12 years**
 
 ### Secondary Users
+
 - Children who respond positively to games, avatars, visual progress, and rewards
 
 ---
@@ -23,12 +27,14 @@ Parents often struggle to motivate children to complete chores and daily respons
 ## 3. Goals & Success Metrics
 
 ### Product Goals
+
 - Increase consistency of chore completion
 - Encourage responsibility through structured rewards
 - Reduce parent friction in managing chores and incentives
 - Operate fully offline without accounts
 
 ### Success Metrics
+
 - Number of chores completed per child per week
 - Daily active usage per child profile
 - Reward redemption frequency
@@ -37,6 +43,7 @@ Parents often struggle to motivate children to complete chores and daily respons
 ---
 
 ## 4. Core Product Concept
+
 ChoreQuest is a **Progressive Web App (PWA)** that allows parents to create and manage chores and rewards, while children interact with a game-like interface where completing chores earns points, levels, and avatar evolution.
 
 The app supports **multiple child profiles**, configurable chores stored in a reusable **Chore Bank**, and a **reward redemption system** fully controlled by parents.
@@ -61,17 +68,20 @@ The app supports **multiple child profiles**, configurable chores stored in a re
 ### Parent User Stories
 
 **Chore Configuration & Control**
+
 - As a parent, I want to **create chores with configurable frequency (one-time, daily, weekly)** so tasks behave correctly without re-creating them.
 - As a parent, I want to **set point values for each chore** so effort and reward are balanced.
 - As a parent, I want to **require approval for specific chores** so important tasks are verified.
 
 **Chore Bank Management**
+
 - As a parent, I want all created chores stored in a **Chore Bank** so they can be reused.
 - As a parent, I want to **assign chores from the Chore Bank to one or multiple children** easily.
 - As a parent, I want to **edit a chore in the Chore Bank** and have changes apply to future assignments.
 - As a parent, I want to **pause or archive chores** without deleting them.
 
 **Rewards & Oversight**
+
 - As a parent, I want to **create and manage rewards** so motivation stays healthy.
 - As a parent, I want to **view chore completion and redemption history** per child.
 - As a parent, I want all administrative actions to be **PIN-protected**.
@@ -105,6 +115,7 @@ The app supports **multiple child profiles**, configurable chores stored in a re
 ## 8. Functional Requirements
 
 ### 8.1 Multi-Profile System
+
 - Support multiple child profiles on one device
 - Independent tracking of points, XP, levels, and history
 
@@ -113,9 +124,11 @@ The app supports **multiple child profiles**, configurable chores stored in a re
 ### 8.2 Chore Bank
 
 #### Description
+
 A centralized repository where parents create, edit, archive, and manage chores.
 
 #### Chore Attributes
+
 - Chore name
 - Icon / category
 - Point value
@@ -134,11 +147,12 @@ A centralized repository where parents create, edit, archive, and manage chores.
 - Completion status tracked per child
 
 #### Reset Logic
-| Frequency | Behavior |
-|---------|---------|
-| One-time | Removed after completion |
-| Daily | Resets every day |
-| Weekly | Resets every week |
+
+| Frequency | Behavior                 |
+| --------- | ------------------------ |
+| One-time  | Removed after completion |
+| Daily     | Resets every day         |
+| Weekly    | Resets every week        |
 
 ---
 
@@ -161,12 +175,14 @@ A centralized repository where parents create, edit, archive, and manage chores.
 ### 8.6 Rewards System (Reward Bank)
 
 #### Reward Attributes
+
 - Reward title
 - Cost in points
 - Optional expiry
 - Active / archived
 
 #### Redemption Flow
+
 - Child selects reward
 - Points deducted
 - Reward logged in redemption history
@@ -195,15 +211,18 @@ A centralized repository where parents create, edit, archive, and manage chores.
 ## 10. Technical Architecture (High Level)
 
 ### Frontend
+
 - React
 - Vite or Create React App
 - Tailwind CSS or CSS Modules
 
 ### Storage
+
 - IndexedDB (primary)
 - Optional JSON export
 
 ### PWA Features
+
 - Offline caching
 - Installable app shell
 - Cached sound and image assets
@@ -213,6 +232,7 @@ A centralized repository where parents create, edit, archive, and manage chores.
 ## 11. Data Model (Simplified)
 
 ### Child Profile
+
 ```json
 {
   "id": "kid_1",
@@ -225,6 +245,7 @@ A centralized repository where parents create, edit, archive, and manage chores.
 ```
 
 ### Chore (Bank)
+
 ```json
 {
   "id": "chore_1",
@@ -237,6 +258,7 @@ A centralized repository where parents create, edit, archive, and manage chores.
 ```
 
 ### Chore Assignment
+
 ```json
 {
   "assignmentId": "assign_1",
@@ -248,6 +270,7 @@ A centralized repository where parents create, edit, archive, and manage chores.
 ```
 
 ### Reward
+
 ```json
 {
   "id": "reward_1",
@@ -270,6 +293,7 @@ A centralized repository where parents create, edit, archive, and manage chores.
 ## 13. MVP Scope
 
 ### Included
+
 - Offline-first PWA
 - Multi-child profiles
 - Chore Bank with assignment
@@ -278,6 +302,7 @@ A centralized repository where parents create, edit, archive, and manage chores.
 - Avatar progression
 
 ### Excluded (Future)
+
 - Cloud sync
 - Cross-device accounts
 - Achievements and streak analytics
@@ -299,4 +324,3 @@ A centralized repository where parents create, edit, archive, and manage chores.
 - Weekly chore granularity
 - Age-based UI scaling
 - Parent approval UX design
-

@@ -44,22 +44,26 @@ VITE_SUPABASE_ANON_KEY=your-anon-key-here
 ## 📥 Installation & Local Development
 
 1. **Clone the repository**:
+
    ```bash
    git clone https://github.com/Stardaus/chore-as-a-game.git
    cd chore-as-a-game
    ```
 
 2. **Install dependencies**:
+
    ```bash
    npm install
    ```
 
 3. **Start the development server**:
+
    ```bash
    npm run dev
    ```
 
 4. **Build for production**:
+
    ```bash
    npm run build
    ```

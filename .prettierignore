@@ -1,0 +1,8 @@
+dist
+node_modules
+coverage
+.husky
+.github
+*.tsbuildinfo
+pwa_push_and_background_sync_plan.md
+quality_security_gate_plan.md

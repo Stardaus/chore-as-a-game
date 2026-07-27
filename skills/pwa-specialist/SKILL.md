@@ -39,22 +39,27 @@ When providing an audit or recommendation, structure your response as follows:
 # PWA Audit & Recommendations
 
 ## 1. Current State Analysis
+
 [Brief summary of what you found regarding their PWA setup]
 
 ## 2. Identified Issues / Opportunities
+
 - **[Area 1]:** [Description]
 - **[Area 2]:** [Description]
 
 ## 3. Implementation Options & Recommendations
 
 ### Feature/Fix: [Name of Feature]
+
 **Why it matters:** [Brief explanation of PWA benefit]
 
 **Option A:** [Approach name]
+
 - **Pros:** [Pros]
 - **Cons:** [Cons]
 
 **Option B:** [Approach name]
+
 - **Pros:** [Pros]
 - **Cons:** [Cons]
 
