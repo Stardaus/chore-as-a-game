@@ -5,6 +5,16 @@ import basicSsl from '@vitejs/plugin-basic-ssl';
 
 // https://vite.dev/config/
 export default defineConfig({
+  server: {
+    headers: {
+      'Cache-Control': 'no-cache',
+    },
+  },
+  preview: {
+    headers: {
+      'Cache-Control': 'no-cache',
+    },
+  },
   plugins: [
     react(),
     basicSsl(),
