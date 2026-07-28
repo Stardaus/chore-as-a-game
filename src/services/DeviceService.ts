@@ -69,7 +69,25 @@ export const DeviceService = {
     const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
     const defaultName = isMobile ? 'Mobile Device' : 'Primary Device';
     const name = customName || storedName || defaultName;
-    const finalRole = role || storedRole || 'main';
+
+    let finalRole = role || storedRole;
+
+    if (!finalRole) {
+      // Check if this family already has an active main device in the database
+      const { data: existingMain } = await supabase
+        .from('devices')
+        .select('id')
+        .eq('family_id', familyId)
+        .eq('role', 'main')
+        .neq('id', deviceId)
+        .maybeSingle();
+
+      if (existingMain) {
+        finalRole = 'secondary_child';
+      } else {
+        finalRole = 'main';
+      }
+    }
 
     await DeviceService.setStoredDeviceName(name);
     await DeviceService.setDeviceRole(finalRole);

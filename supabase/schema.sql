@@ -31,6 +31,9 @@ ALTER TABLE public.devices ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT '
 ALTER TABLE public.devices ADD COLUMN IF NOT EXISTS is_stale BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE public.devices ADD COLUMN IF NOT EXISTS push_subscription JSONB;
 
+-- Ensure only 1 device can hold the 'main' role per family
+CREATE UNIQUE INDEX IF NOT EXISTS unique_main_device_per_family ON public.devices (family_id) WHERE (role = 'main');
+
 CREATE TABLE IF NOT EXISTS public.profiles (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     family_id UUID REFERENCES public.families(id) ON DELETE CASCADE NOT NULL,

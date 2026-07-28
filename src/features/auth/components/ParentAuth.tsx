@@ -143,7 +143,9 @@ export function ParentAuth() {
             const existingMain = mainDevices?.find((d) => d.id !== deviceId);
 
             if (existingMain) {
-              // Block login: another device is already the Main App
+              // Block login: cleanup any accidental row and sign out
+              await supabase.from('devices').delete().eq('id', deviceId);
+              await DeviceService.setDeviceRole('secondary_child');
               await supabase.auth.signOut();
               setError(
                 `Another device ("${existingMain.name}") is currently logged in as the Main App. Only one device can hold Main App status at a time. To transfer access, open Settings → Transfer Main App on that device.`
