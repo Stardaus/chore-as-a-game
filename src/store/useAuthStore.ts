@@ -51,6 +51,8 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   signOut: async () => {
     await supabase.auth.signOut();
+    const { DeviceService } = await import('../services/DeviceService');
+    await DeviceService.clearDeviceRole();
     const idb = await import('idb-keyval');
     await idb.del('linked-family-id');
     set({ session: null, user: null, isDeviceLinked: false });
@@ -69,6 +71,8 @@ export const useAuthStore = create<AuthState>((set) => ({
       }
     }
 
+    const { DeviceService } = await import('../services/DeviceService');
+    await DeviceService.clearDeviceRole();
     await idb.del('linked-family-id');
     set({ isDeviceLinked: false });
     useStore.getState().clearLocalData();

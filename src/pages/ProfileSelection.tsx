@@ -27,9 +27,10 @@ export function ProfileSelection() {
 
   useEffect(() => {
     DeviceService.getDeviceRole().then(setRole);
-  }, []);
+  }, [isLinked, session, view]);
 
-  const isChildDevice = role === 'secondary_child';
+  // A device is only considered a secondary child device if linked AND explicitly assigned secondary_child role
+  const isChildDevice = (isLinked || !!session) && role === 'secondary_child';
 
   const handleChildSelect = (childId: string) => {
     navigate(`/child/${childId}`);

@@ -160,9 +160,9 @@ export function ParentAuth() {
                 // Ignore push error if edge function is unreachable
               }
 
-              // 2. Clean up temporary row, reset local role, and sign out
+              // 2. Clean up temporary row, clear local role, and sign out
               await supabase.from('devices').delete().eq('id', deviceId);
-              await DeviceService.setDeviceRole('secondary_child');
+              await DeviceService.clearDeviceRole();
               await supabase.auth.signOut();
 
               // 3. Fail connection and display error to connecting app

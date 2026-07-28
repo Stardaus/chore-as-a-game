@@ -40,6 +40,15 @@ export const DeviceService = {
   },
 
   /**
+   * Clears the locally stored device role and name.
+   */
+  clearDeviceRole: async (): Promise<void> => {
+    const { del } = await import('idb-keyval');
+    await del(DEVICE_ROLE_KEY);
+    await del(DEVICE_NAME_KEY);
+  },
+
+  /**
    * Retrieves the locally stored device name.
    */
   getStoredDeviceName: async (): Promise<string | null> => {
