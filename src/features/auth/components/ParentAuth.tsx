@@ -125,66 +125,14 @@ export function ParentAuth() {
           alert('Verification email sent! Please check your inbox to confirm your account.');
         }
       } else {
-        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-        if (data.session) {
-          const { DeviceService } = await import('../../../services/DeviceService');
-          const deviceId = await DeviceService.getDeviceId();
-
-          // Check if another device is already registered as the Main App
-          const { data: familyData } = await supabase
-            .from('families')
-            .select('id')
-            .eq('parent_id', data.session.user.id)
-            .maybeSingle();
-
-          if (familyData?.id) {
-            const { data: allDevices } = await supabase
-              .from('devices')
-              .select('id, name, role, created_at')
-              .eq('family_id', familyData.id)
-              .order('created_at', { ascending: true });
-
-            if (allDevices && allDevices.length > 0) {
-              const mainDevice = allDevices.find((d) => d.role === 'main');
-
-              if (mainDevice && mainDevice.id !== deviceId) {
-                // 1. Notify current Main App via Edge Function
-                const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-                const deviceName = isMobile ? 'Mobile Device' : 'Desktop Device';
-                try {
-                  await supabase.functions.invoke('send-push', {
-                    body: {
-                      family_id: familyData.id,
-                      target_role: 'main',
-                      title: '⚠️ Security Alert',
-                      body: `A login attempt from "${deviceName}" was blocked because this family account is active on "${mainDevice.name}".`,
-                      tag: 'login-blocked',
-                      exclude_device_id: deviceId,
-                    },
-                  });
-                } catch (_e) {
-                  // Ignore push error if edge function is unreachable
-                }
-
-                // 2. Clean up temporary row, clear local role, and sign out
-                await supabase.from('devices').delete().eq('id', deviceId);
-                await DeviceService.clearDeviceRole();
-                await supabase.auth.signOut();
-
-                // 3. Set blocked state for rich instruction card
-                setBlockedMainDevice({ id: mainDevice.id, name: mainDevice.name });
-                return;
-              }
-            }
-
-            // Register this device as the main device
-            await DeviceService.ensureDeviceRegistered(familyData.id, undefined, 'main');
+        const { DeviceSessionModule } = await import('../../../services/DeviceSessionModule');
+        const result = await DeviceSessionModule.loginMain({ email, password });
+        if (!result.success) {
+          if (result.blockedMainDevice) {
+            setBlockedMainDevice(result.blockedMainDevice);
+          } else if (result.error) {
+            setError(result.error);
           }
-
-          useAuthStore.getState().setSession(data.session);
-          const { useFamilyStore } = await import('../../../store/useFamilyStore');
-          await useFamilyStore.getState().fetchFamily();
         }
       }
     } catch (err: any) {

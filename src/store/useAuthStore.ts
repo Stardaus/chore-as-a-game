@@ -54,20 +54,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   signOut: async () => {
-    try {
-      const { PushSubscriptionService } = await import('../services/PushSubscriptionService');
-      await PushSubscriptionService.unsubscribe();
-    } catch (e) {
-      console.warn('Failed to unsubscribe push notifications on sign out:', e);
-    }
-
-    await supabase.auth.signOut();
-    const { DeviceService } = await import('../services/DeviceService');
-    await DeviceService.clearDeviceRole();
-    const idb = await import('idb-keyval');
-    await idb.del('linked-family-id');
-    set({ session: null, user: null, isDeviceLinked: false, isValidatingAuth: false });
-    useStore.getState().clearLocalData();
+    const { DeviceSessionModule } = await import('../services/DeviceSessionModule');
+    await DeviceSessionModule.signOut();
   },
 
   unlinkDevice: async () => {

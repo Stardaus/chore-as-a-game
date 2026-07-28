@@ -346,22 +346,9 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                       'Transfer Main App status? This device will release Main App access, be removed from family devices, sign out, and restart as a fresh app so another device can claim Main App status.'
                     )
                   ) {
-                    const { DeviceService } = await import('../../../services/DeviceService');
-                    const deviceId = await DeviceService.getDeviceId();
-                    const { supabase } = await import('../../../lib/supabase');
-                    const { PushSubscriptionService } =
-                      await import('../../../services/PushSubscriptionService');
-                    const { useAuthStore } = await import('../../../store/useAuthStore');
-
-                    try {
-                      await PushSubscriptionService.unsubscribe();
-                      // Delete device completely from devices table
-                      await supabase.from('devices').delete().eq('id', deviceId);
-                    } catch (e) {
-                      console.warn('Error deleting device during main app transfer:', e);
-                    }
-
-                    await useAuthStore.getState().signOut();
+                    const { DeviceSessionModule } =
+                      await import('../../../services/DeviceSessionModule');
+                    await DeviceSessionModule.transferMainApp();
                     alert('Main App status released. Device removed and signed out.');
                     window.location.href = '/';
                   }

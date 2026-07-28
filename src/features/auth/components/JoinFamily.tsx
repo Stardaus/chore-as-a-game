@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { DeviceService } from '../../../services/DeviceService';
 import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
 import {
@@ -63,13 +62,16 @@ export function JoinFamily({ onJoined, onBack }: JoinFamilyProps) {
     setError(null);
 
     try {
-      const familyId = await DeviceService.linkDevice(code, result.data!.name, role);
+      const { DeviceSessionModule } = await import('../../../services/DeviceSessionModule');
+      const res = await DeviceSessionModule.joinFamily(code, result.data!.name, role);
 
-      // Trigger global state refresh immediately after linking
+      if (!res.success || !res.familyId) {
+        throw new Error(res.error || 'Failed to link device.');
+      }
+
       await refreshLinkStatus();
-
       setSuccess(true);
-      setTimeout(() => onJoined(familyId), 1500);
+      setTimeout(() => onJoined(res.familyId!), 1500);
     } catch (err: any) {
       setError(err.message || 'Failed to link device.');
     } finally {
