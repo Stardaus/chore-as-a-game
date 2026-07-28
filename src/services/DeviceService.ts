@@ -83,7 +83,7 @@ export const DeviceService = {
         .maybeSingle();
 
       if (existingMain) {
-        finalRole = 'secondary_child';
+        throw new Error('A Main App is already registered for this family.');
       } else {
         finalRole = 'main';
       }

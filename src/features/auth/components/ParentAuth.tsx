@@ -143,12 +143,31 @@ export function ParentAuth() {
             const existingMain = mainDevices?.find((d) => d.id !== deviceId);
 
             if (existingMain) {
-              // Block login: cleanup any accidental row and sign out
+              // 1. Notify current Main App via Edge Function
+              const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+              const deviceName = isMobile ? 'Mobile Device' : 'Desktop Device';
+              try {
+                await supabase.functions.invoke('send-push', {
+                  body: {
+                    family_id: familyData.id,
+                    title: '⚠️ Security Alert',
+                    body: `A login attempt from "${deviceName}" was blocked because this device is the Main App.`,
+                    tag: 'login-blocked',
+                    exclude_device_id: deviceId,
+                  },
+                });
+              } catch (_e) {
+                // Ignore push error if edge function is unreachable
+              }
+
+              // 2. Clean up temporary row, reset local role, and sign out
               await supabase.from('devices').delete().eq('id', deviceId);
               await DeviceService.setDeviceRole('secondary_child');
               await supabase.auth.signOut();
+
+              // 3. Fail connection and display error to connecting app
               setError(
-                `Another device ("${existingMain.name}") is currently logged in as the Main App. Only one device can hold Main App status at a time. To transfer access, open Settings → Transfer Main App on that device.`
+                `Access Blocked: Another device ("${existingMain.name}") is currently active as the Main App. Only one device can hold Main App status at a time. The Main App has been notified of this attempt.`
               );
               setLoading(false);
               return;

@@ -92,11 +92,19 @@ export function useAppLifecycle() {
       if (targetFamilyId) {
         syncWithCloud(targetFamilyId);
         import('../services/DeviceService').then(({ DeviceService }) => {
-          DeviceService.ensureDeviceRegistered(targetFamilyId).then(() => {
-            if ('Notification' in window && Notification.permission === 'granted') {
-              import('../services/PushSubscriptionService').then(({ PushSubscriptionService }) => {
-                PushSubscriptionService.subscribe();
-              });
+          DeviceService.getDeviceRole().then((storedRole) => {
+            if (storedRole) {
+              DeviceService.ensureDeviceRegistered(targetFamilyId, undefined, storedRole).then(
+                () => {
+                  if ('Notification' in window && Notification.permission === 'granted') {
+                    import('../services/PushSubscriptionService').then(
+                      ({ PushSubscriptionService }) => {
+                        PushSubscriptionService.subscribe();
+                      }
+                    );
+                  }
+                }
+              );
             }
           });
         });
