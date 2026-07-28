@@ -3,7 +3,7 @@ import { urlBase64ToUint8Array } from '../services/PushSubscriptionService';
 
 describe('PushSubscriptionService - VAPID Key Validation', () => {
   const validVapidKey =
-    'BESP-9psMEssn0nr6XJjKr0F4Fu_rYRfcBdwtFMFm90sGi344hfNtbT16MPF2-a7pdzvy3saBcjn54rWVp1qdGY';
+    'BAcOFRwjKjE4P0ZNVFtiaXB3foWMk5qhqK-2vcTL0tng5-71_AMKERgfJi00O0JJUFdeZWxzeoGIj5adpKuyucA';
 
   it('correctly converts valid uncompressed 65-byte VAPID key', () => {
     const bytes = urlBase64ToUint8Array(validVapidKey);
