@@ -102,6 +102,7 @@ export function ParentAuth() {
 
     setLoading(true);
     setError(null);
+    useAuthStore.getState().setValidatingAuth(true);
 
     try {
       if (isSignUp) {
@@ -170,7 +171,6 @@ export function ParentAuth() {
                 setError(
                   `Access Blocked: Another device ("${mainDevice.name}") is currently active as the Main App. Only one device can hold Main App status at a time. The Main App has been notified of this attempt.`
                 );
-                setLoading(false);
                 return;
               }
             }
@@ -187,6 +187,7 @@ export function ParentAuth() {
     } catch (err: any) {
       handleAuthError(err);
     } finally {
+      useAuthStore.getState().setValidatingAuth(false);
       setLoading(false);
     }
   };

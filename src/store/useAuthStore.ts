@@ -9,22 +9,25 @@ interface AuthState {
   isDeviceLinked: boolean;
   loading: boolean;
   initialized: boolean;
+  isValidatingAuth: boolean;
 
   // Actions
   setSession: (session: Session | null) => void;
   setDeviceLinked: (linked: boolean) => void;
+  setValidatingAuth: (validating: boolean) => void;
   refreshLinkStatus: () => Promise<void>;
   signOut: () => Promise<void>;
   unlinkDevice: () => Promise<void>;
   initialize: () => Promise<void>;
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
+export const useAuthStore = create<AuthState>((set, get) => ({
   session: null,
   user: null,
   isDeviceLinked: false,
   loading: true,
   initialized: false,
+  isValidatingAuth: false,
 
   setSession: (session) =>
     set({
@@ -34,6 +37,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     }),
 
   setDeviceLinked: (linked) => set({ isDeviceLinked: linked }),
+  setValidatingAuth: (validating) => set({ isValidatingAuth: validating }),
 
   refreshLinkStatus: async () => {
     const idb = await import('idb-keyval');
@@ -55,7 +59,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     await DeviceService.clearDeviceRole();
     const idb = await import('idb-keyval');
     await idb.del('linked-family-id');
-    set({ session: null, user: null, isDeviceLinked: false });
+    set({ session: null, user: null, isDeviceLinked: false, isValidatingAuth: false });
     useStore.getState().clearLocalData();
   },
 
@@ -74,7 +78,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     const { DeviceService } = await import('../services/DeviceService');
     await DeviceService.clearDeviceRole();
     await idb.del('linked-family-id');
-    set({ isDeviceLinked: false });
+    set({ isDeviceLinked: false, isValidatingAuth: false });
     useStore.getState().clearLocalData();
   },
 
@@ -93,8 +97,16 @@ export const useAuthStore = create<AuthState>((set) => ({
       initialized: true,
     });
 
-    supabase.auth.onAuthStateChange((_event, session) => {
-      set({ session, user: session?.user ?? null, loading: false });
+    supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT') {
+        set({ session: null, user: null, loading: false, isValidatingAuth: false });
+        return;
+      }
+
+      // Do NOT auto-set session while ParentAuth is validating single-main device rules
+      if (!get().isValidatingAuth) {
+        set({ session, user: session?.user ?? null, loading: false });
+      }
     });
   },
 }));
