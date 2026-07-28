@@ -61,20 +61,12 @@ describe('Login Exclusivity & Transfer Tests', () => {
     expect(isBlocked).toBe(true);
   });
 
-  it('allows a new device to log in as main app if the main app was transferred or signed out (role != main)', async () => {
+  it('allows a new device to log in as main app if the main app was transferred (device deleted or role != main)', async () => {
     const familyId = 'test-family-123';
-    const demotedDeviceId = 'device-a-demoted';
     const secondDeviceId = 'device-b-attempt';
 
-    // Device A was transferred or signed out, so its role is now 'secondary_parent'
-    const mockDevices = [
-      {
-        id: demotedDeviceId,
-        name: 'Dad MacBook',
-        role: 'secondary_parent',
-        created_at: '2026-01-01T00:00:00Z',
-      },
-    ];
+    // Device A was transferred and deleted from devices table
+    const mockDevices: any[] = [];
 
     vi.spyOn(supabase, 'from').mockImplementation((table: string) => {
       if (table === 'families') {
