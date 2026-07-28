@@ -1,4 +1,5 @@
 import { useStore } from '../../../store';
+import { SubscriptionEntitlementModule } from '../../../services/SubscriptionEntitlementModule';
 import { Modal } from '../../../components/ui/Modal';
 import { Button } from '../../../components/ui/Button';
 import { TEMPLATE_BUNDLES } from '../../../constants/templates';
@@ -48,10 +49,15 @@ export function TemplateSelectorModal({ isOpen, onClose }: TemplateSelectorModal
           {TEMPLATE_BUNDLES.map((bundle) => {
             // Count how many from this bundle are already active in the bank
             const existingActiveTitles = new Set(
-              chores.filter((c) => c.status === 'active').map((c) => c.title)
+              chores.filter((c) => c.status === 'active').map((c) => c.title.toLowerCase())
             );
-            const newCount = bundle.chores.filter((c) => !existingActiveTitles.has(c.title)).length;
+            const newCount = bundle.chores.filter(
+              (c) => !existingActiveTitles.has(c.title.toLowerCase())
+            ).length;
             const totalCount = bundle.chores.length;
+
+            const entitlement = SubscriptionEntitlementModule.canAdd('chores', newCount);
+            const exceedsQuota = newCount > 0 && !entitlement.allowed;
 
             return (
               <button
@@ -62,7 +68,9 @@ export function TemplateSelectorModal({ isOpen, onClose }: TemplateSelectorModal
                   'flex items-center gap-4 p-4 rounded-2xl border-2 text-left transition-all',
                   newCount === 0
                     ? 'opacity-50 grayscale bg-slate-50 border-slate-100 cursor-not-allowed'
-                    : 'bg-white border-slate-100 hover:border-indigo-500 hover:shadow-md active:scale-[0.98]'
+                    : exceedsQuota
+                      ? 'bg-amber-50/40 border-amber-200/60 hover:border-amber-400'
+                      : 'bg-white border-slate-100 hover:border-indigo-500 hover:shadow-md active:scale-[0.98]'
                 )}
               >
                 <div
@@ -83,12 +91,21 @@ export function TemplateSelectorModal({ isOpen, onClose }: TemplateSelectorModal
                   </div>
                   <p className="text-xs text-slate-500 line-clamp-1 mt-0.5">{bundle.description}</p>
 
-                  {newCount > 0 && newCount < totalCount && (
+                  {exceedsQuota ? (
+                    <p className="text-[10px] text-amber-700 font-bold mt-1 flex items-center gap-1">
+                      <Icons.AlertTriangle className="h-3 w-3 text-amber-600" /> Exceeds Free Limit
+                      ({entitlement.usage.currentCount + newCount}/{entitlement.usage.maxLimit}{' '}
+                      Chores)
+                    </p>
+                  ) : newCount > 0 && newCount < totalCount ? (
                     <p className="text-[10px] text-indigo-600 font-bold mt-1">
                       {newCount} new chores will be added
                     </p>
-                  )}
-                  {newCount === 0 && (
+                  ) : newCount > 0 ? (
+                    <p className="text-[10px] text-indigo-600 font-bold mt-1">
+                      {newCount} new chores ready to add
+                    </p>
+                  ) : (
                     <p className="text-[10px] text-green-600 font-bold mt-1 flex items-center gap-1">
                       <Icons.Check className="h-3 w-3" /> Already in Bank
                     </p>

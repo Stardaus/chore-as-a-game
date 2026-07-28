@@ -311,7 +311,25 @@ export const createChoreSlice = (set: StoreSet, get: StoreGet): ChoreSlice => ({
 
   addFromTemplate: async (templateChores) => {
     const { familyId, chores, safeSync } = get();
-    const choresWithIds = templateChores.map((c) => ({
+
+    const existingActiveTitles = new Set(
+      chores.filter((c) => c.status === 'active').map((c) => c.title.toLowerCase())
+    );
+    const newChoresToInsert = templateChores.filter(
+      (c) => !existingActiveTitles.has(c.title.toLowerCase())
+    );
+
+    if (newChoresToInsert.length === 0) return;
+
+    const { SubscriptionEntitlementModule } =
+      await import('../../services/SubscriptionEntitlementModule');
+    const entitlement = SubscriptionEntitlementModule.canAdd('chores', newChoresToInsert.length);
+    if (!entitlement.allowed) {
+      alert(entitlement.message || 'Free tier limit reached for active chores!');
+      return;
+    }
+
+    const choresWithIds = newChoresToInsert.map((c) => ({
       ...c,
       id: uuidv4(),
       status: 'active' as const,

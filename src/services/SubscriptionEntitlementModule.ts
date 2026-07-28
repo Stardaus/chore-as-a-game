@@ -69,12 +69,20 @@ export const SubscriptionEntitlementModule = {
   },
 
   /**
-   * Asserts whether a new item can be created under the active subscription tier.
+   * Asserts whether a single item OR a batch of N items can be created/assigned
+   * under the active subscription tier.
    */
-  canAdd(feature: EntitlementFeature): EntitlementCheckResult {
+  canAdd(feature: EntitlementFeature, countToAdd: number = 1): EntitlementCheckResult {
     const usage = this.getUsage(feature);
 
-    if (usage.isAllowed) {
+    if (usage.isUnlimited) {
+      return { allowed: true, usage };
+    }
+
+    const projectedCount = usage.currentCount + countToAdd;
+    const isAllowed = projectedCount <= usage.maxLimit;
+
+    if (isAllowed) {
       return { allowed: true, usage };
     }
 
@@ -85,7 +93,10 @@ export const SubscriptionEntitlementModule = {
     };
 
     const name = featureNames[feature] || feature;
-    const message = `Free tier limit reached (${usage.currentCount}/${usage.maxLimit} ${name}). Upgrade to Premium for unlimited access!`;
+    const message =
+      countToAdd > 1
+        ? `Free tier limit reached (${usage.currentCount}/${usage.maxLimit} ${name}). Adding ${countToAdd} item(s) would exceed your free limit (${projectedCount}/${usage.maxLimit}). Upgrade to Premium for unlimited access!`
+        : `Free tier limit reached (${usage.currentCount}/${usage.maxLimit} ${name}). Upgrade to Premium for unlimited access!`;
 
     return {
       allowed: false,

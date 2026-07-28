@@ -45,4 +45,49 @@ describe('SubscriptionEntitlementModule Seam Tests', () => {
     expect(res.allowed).toBe(true);
     expect(res.usage.isUnlimited).toBe(true);
   });
+
+  it('blocks batch additions when projected count exceeds free tier limit', () => {
+    useStore.setState({
+      chores: [
+        {
+          id: '1',
+          title: 'Chore 1',
+          points: 10,
+          frequency: 'daily',
+          requiresApproval: false,
+          icon: 'Check',
+          tags: [],
+          status: 'active',
+        },
+        {
+          id: '2',
+          title: 'Chore 2',
+          points: 10,
+          frequency: 'daily',
+          requiresApproval: false,
+          icon: 'Check',
+          tags: [],
+          status: 'active',
+        },
+        {
+          id: '3',
+          title: 'Chore 3',
+          points: 10,
+          frequency: 'daily',
+          requiresApproval: false,
+          icon: 'Check',
+          tags: [],
+          status: 'active',
+        },
+      ],
+    });
+
+    // Adding 1 chore is allowed (3 + 1 <= 5)
+    expect(SubscriptionEntitlementModule.canAdd('chores', 1).allowed).toBe(true);
+
+    // Adding 4 chores from a template is blocked (3 + 4 = 7 > 5)
+    const batchRes = SubscriptionEntitlementModule.canAdd('chores', 4);
+    expect(batchRes.allowed).toBe(false);
+    expect(batchRes.message).toContain('Adding 4 item(s) would exceed your free limit (7/5)');
+  });
 });
