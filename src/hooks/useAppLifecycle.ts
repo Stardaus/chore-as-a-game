@@ -38,6 +38,9 @@ export function useAppLifecycle() {
       if (document.visibilityState === 'visible') {
         refreshAssignments();
         NotificationCenter.checkScheduledReminders();
+        import('../services/DeviceService').then(({ DeviceService }) => {
+          DeviceService.touchLastSeen();
+        });
         if ('serviceWorker' in navigator) {
           navigator.serviceWorker.getRegistration().then((reg) => {
             if (reg) reg.update();
@@ -122,12 +125,17 @@ export function useAppLifecycle() {
     NotificationCenter.updateBadgeFromState();
   }, [assignments, redemptions, notificationPrefs.badgeEnabled]);
 
-  // 5. Global Reminder Heartbeat
+  // 5. Global Reminder & Device Liveness Heartbeat
   useEffect(() => {
-    const interval = setInterval(() => {
+    const triggerHeartbeat = () => {
       NotificationCenter.checkScheduledReminders();
-    }, 60000);
-    NotificationCenter.checkScheduledReminders();
+      import('../services/DeviceService').then(({ DeviceService }) => {
+        DeviceService.touchLastSeen();
+      });
+    };
+
+    const interval = setInterval(triggerHeartbeat, 60000);
+    triggerHeartbeat();
     return () => clearInterval(interval);
   }, []);
 

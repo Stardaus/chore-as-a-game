@@ -16,6 +16,32 @@ import {
 } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 
+function getRelativeLiveness(lastSeenIso?: string): {
+  label: string;
+  status: 'active' | 'idle' | 'stale';
+} {
+  if (!lastSeenIso) return { label: 'Unknown', status: 'stale' };
+
+  const lastSeen = new Date(lastSeenIso).getTime();
+  const now = Date.now();
+  const diffMs = Math.max(0, now - lastSeen);
+  const diffMins = Math.floor(diffMs / (1000 * 60));
+  const diffHours = Math.floor(diffMins / 60);
+  const diffDays = Math.floor(diffHours / 24);
+
+  if (diffMins < 10) {
+    return { label: 'Active now', status: 'active' };
+  } else if (diffMins < 60) {
+    return { label: `Active ${diffMins}m ago`, status: 'active' };
+  } else if (diffHours < 24) {
+    return { label: `Active ${diffHours}h ago`, status: 'idle' };
+  } else if (diffDays < 7) {
+    return { label: `Active ${diffDays}d ago`, status: 'idle' };
+  } else {
+    return { label: `Inactive (${diffDays}d ago)`, status: 'stale' };
+  }
+}
+
 /**
  * Interface for parents to manage linked devices and join codes.
  *
@@ -190,9 +216,15 @@ export function DeviceManager() {
                   <p className="text-[10px] text-slate-400 font-mono">
                     Sync ID: {mainDevice.id.slice(0, 8)}...
                   </p>
-                  <span className="text-[9px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.2 rounded inline-flex items-center gap-0.5">
-                    Online
-                  </span>
+                  {(() => {
+                    const liveness = getRelativeLiveness(mainDevice.last_seen_at);
+                    return (
+                      <span className="text-[9px] font-bold text-emerald-700 bg-emerald-100/80 px-1.5 py-0.2 rounded inline-flex items-center gap-1">
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                        {liveness.label}
+                      </span>
+                    );
+                  })()}
                 </div>
               </div>
             </div>
@@ -212,77 +244,93 @@ export function DeviceManager() {
         </div>
 
         <div className="grid gap-2">
-          {secondaryDevices.map((device) => (
-            <Card key={device.id} className="p-3 border-slate-100 shadow-none bg-slate-50/50">
-              <div className="flex items-center justify-between gap-3">
-                <div className="h-10 w-10 rounded-xl bg-white border border-slate-100 flex items-center justify-center shrink-0">
-                  <Smartphone className="h-5 w-5 text-slate-400" />
-                </div>
-
-                <div className="flex-1 min-w-0">
-                  {editingId === device.id ? (
-                    <div className="flex items-center gap-1">
-                      <input
-                        type="text"
-                        value={editingName}
-                        onChange={(e) => setEditingName(e.target.value)}
-                        className="text-xs font-bold bg-white border border-indigo-200 rounded px-2 py-0.5 w-full focus:outline-none"
-                        autoFocus
-                        maxLength={20}
-                      />
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-6 w-6 text-green-600"
-                        onClick={() => handleSaveRename(device.id)}
-                      >
-                        <Check className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-6 w-6 text-slate-400"
-                        onClick={() => setEditingId(null)}
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2">
-                      <h5 className="text-sm font-bold text-slate-800 truncate">{device.name}</h5>
-                      {getRoleBadge(device.role)}
-                      <button
-                        onClick={() => handleStartRename(device.id, device.name)}
-                        className="text-slate-400 hover:text-indigo-600 transition-colors p-0.5"
-                      >
-                        <Edit2 className="h-3 w-3" />
-                      </button>
-                    </div>
-                  )}
-
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <p className="text-[10px] text-slate-400 italic font-mono">
-                      Sync ID: {device.id.slice(0, 8)}...
-                    </p>
-                    {device.is_stale && (
-                      <span className="text-[9px] font-bold text-amber-700 bg-amber-100 px-1 rounded inline-flex items-center gap-0.5">
-                        <AlertTriangle className="h-2.5 w-2.5" /> Inactive
-                      </span>
-                    )}
+          {secondaryDevices.map((device) => {
+            const liveness = getRelativeLiveness(device.last_seen_at);
+            return (
+              <Card key={device.id} className="p-3 border-slate-100 shadow-none bg-slate-50/50">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="h-10 w-10 rounded-xl bg-white border border-slate-100 flex items-center justify-center shrink-0">
+                    <Smartphone className="h-5 w-5 text-slate-400" />
                   </div>
-                </div>
 
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 text-red-400 hover:text-red-600 hover:bg-red-50"
-                  onClick={() => removeDevice(device.id)}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            </Card>
-          ))}
+                  <div className="flex-1 min-w-0">
+                    {editingId === device.id ? (
+                      <div className="flex items-center gap-1">
+                        <input
+                          type="text"
+                          value={editingName}
+                          onChange={(e) => setEditingName(e.target.value)}
+                          className="text-xs font-bold bg-white border border-indigo-200 rounded px-2 py-0.5 w-full focus:outline-none"
+                          autoFocus
+                          maxLength={20}
+                        />
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-6 w-6 text-green-600"
+                          onClick={() => handleSaveRename(device.id)}
+                        >
+                          <Check className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-6 w-6 text-slate-400"
+                          onClick={() => setEditingId(null)}
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <h5 className="text-sm font-bold text-slate-800 truncate">{device.name}</h5>
+                        {getRoleBadge(device.role)}
+                        <button
+                          onClick={() => handleStartRename(device.id, device.name)}
+                          className="text-slate-400 hover:text-indigo-600 transition-colors p-0.5"
+                        >
+                          <Edit2 className="h-3 w-3" />
+                        </button>
+                      </div>
+                    )}
+
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <p className="text-[10px] text-slate-400 italic font-mono">
+                        Sync ID: {device.id.slice(0, 8)}...
+                      </p>
+                      {liveness.status === 'active' && (
+                        <span className="text-[9px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.2 rounded inline-flex items-center gap-1">
+                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                          {liveness.label}
+                        </span>
+                      )}
+                      {liveness.status === 'idle' && (
+                        <span className="text-[9px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.2 rounded inline-flex items-center gap-1">
+                          <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                          {liveness.label}
+                        </span>
+                      )}
+                      {liveness.status === 'stale' && (
+                        <span className="text-[9px] font-bold text-red-700 bg-red-100 px-1.5 py-0.2 rounded inline-flex items-center gap-1">
+                          <AlertTriangle className="h-2.5 w-2.5 text-red-500" />
+                          {liveness.label}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-red-400 hover:text-red-600 hover:bg-red-50"
+                    onClick={() => removeDevice(device.id)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </Card>
+            );
+          })}
 
           {secondaryDevices.length === 0 && !loading && (
             <div className="text-center py-6 border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50/40">

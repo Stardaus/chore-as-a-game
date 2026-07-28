@@ -168,4 +168,32 @@ export const DeviceService = {
 
     return familyId;
   },
+
+  /**
+   * Updates the last_seen_at timestamp in public.devices table for this device.
+   * Throttled to execute at most once every 5 minutes (300,000 ms).
+   */
+  touchLastSeen: async (): Promise<void> => {
+    const now = Date.now();
+    if (now - lastHeartbeatTime < 5 * 60 * 1000) {
+      return;
+    }
+    lastHeartbeatTime = now;
+
+    try {
+      const deviceId = await DeviceService.getDeviceId();
+      const isoNow = new Date().toISOString();
+      const { error } = await supabase
+        .from('devices')
+        .update({ last_seen_at: isoNow, is_stale: false })
+        .eq('id', deviceId);
+
+      if (error) {
+        console.warn('Failed to update device heartbeat:', error);
+      }
+    } catch (err) {
+      console.warn('Device heartbeat error:', err);
+    }
+  },
 };
+let lastHeartbeatTime = 0;
