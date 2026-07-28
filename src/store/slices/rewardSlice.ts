@@ -1,6 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
 import { Validation } from '../../lib/validation';
-import { FREE_TIER_LIMITS } from '../../constants';
 import type { StoreSet, StoreGet, RewardSlice } from './types';
 
 export const createRewardSlice = (set: StoreSet, get: StoreGet): RewardSlice => ({
@@ -8,7 +7,7 @@ export const createRewardSlice = (set: StoreSet, get: StoreGet): RewardSlice => 
   redemptions: [],
 
   addReward: async (reward) => {
-    let { familyId, rewards, isPremium, safeSync } = get();
+    let { familyId, rewards, safeSync } = get();
     if (!familyId) {
       const idb = await import('idb-keyval');
       familyId = (await idb.get<string>('linked-family-id')) || null;
@@ -21,9 +20,11 @@ export const createRewardSlice = (set: StoreSet, get: StoreGet): RewardSlice => 
       return;
     }
 
-    const active = rewards.filter((r) => r.status === 'active');
-    if (!isPremium && active.length >= FREE_TIER_LIMITS.REWARDS) {
-      alert('Free tier limit!');
+    const { SubscriptionEntitlementModule } =
+      await import('../../services/SubscriptionEntitlementModule');
+    const entitlement = SubscriptionEntitlementModule.canAdd('rewards');
+    if (!entitlement.allowed) {
+      alert(entitlement.message || 'Free tier limit reached!');
       return;
     }
 

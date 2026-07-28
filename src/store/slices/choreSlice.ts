@@ -1,7 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from '../../lib/supabase';
 import { Validation } from '../../lib/validation';
-import { FREE_TIER_LIMITS } from '../../constants';
 import type { StoreSet, StoreGet, ChoreSlice } from './types';
 import type { Assignment } from '../../types';
 
@@ -10,7 +9,7 @@ export const createChoreSlice = (set: StoreSet, get: StoreGet): ChoreSlice => ({
   assignments: [],
 
   addChore: async (chore) => {
-    let { familyId, isPremium, chores, safeSync } = get();
+    let { familyId, chores, safeSync } = get();
     if (!familyId) {
       const idb = await import('idb-keyval');
       familyId = (await idb.get<string>('linked-family-id')) || null;
@@ -28,8 +27,11 @@ export const createChoreSlice = (set: StoreSet, get: StoreGet): ChoreSlice => ({
       alert('Chore exists!');
       return;
     }
-    if (!isPremium && active.length >= FREE_TIER_LIMITS.CHORES) {
-      alert('Free tier limit!');
+    const { SubscriptionEntitlementModule } =
+      await import('../../services/SubscriptionEntitlementModule');
+    const entitlement = SubscriptionEntitlementModule.canAdd('chores');
+    if (!entitlement.allowed) {
+      alert(entitlement.message || 'Free tier limit reached!');
       return;
     }
 

@@ -1,14 +1,13 @@
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from '../../lib/supabase';
 import { Validation } from '../../lib/validation';
-import { FREE_TIER_LIMITS } from '../../constants';
 import type { StoreSet, StoreGet, ProfileSlice } from './types';
 
 export const createProfileSlice = (set: StoreSet, get: StoreGet): ProfileSlice => ({
   profiles: [],
 
   addProfile: async (name, avatar) => {
-    let { familyId, isPremium, profiles, safeSync } = get();
+    let { familyId, profiles, safeSync } = get();
     if (!familyId) {
       const idb = await import('idb-keyval');
       familyId = (await idb.get<string>('linked-family-id')) || null;
@@ -24,8 +23,11 @@ export const createProfileSlice = (set: StoreSet, get: StoreGet): ProfileSlice =
       alert(result.error);
       return;
     }
-    if (!isPremium && profiles.length >= FREE_TIER_LIMITS.PROFILES) {
-      alert('Free tier limit!');
+    const { SubscriptionEntitlementModule } =
+      await import('../../services/SubscriptionEntitlementModule');
+    const entitlement = SubscriptionEntitlementModule.canAdd('profiles');
+    if (!entitlement.allowed) {
+      alert(entitlement.message || 'Free tier limit reached!');
       return;
     }
 
