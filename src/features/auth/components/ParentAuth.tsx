@@ -142,9 +142,9 @@ export function ParentAuth() {
               .order('created_at', { ascending: true });
 
             if (allDevices && allDevices.length > 0) {
-              const mainDevice = allDevices.find((d) => d.role === 'main') || allDevices[0];
+              const mainDevice = allDevices.find((d) => d.role === 'main');
 
-              if (mainDevice.id !== deviceId) {
+              if (mainDevice && mainDevice.id !== deviceId) {
                 // 1. Notify current Main App via Edge Function
                 const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
                 const deviceName = isMobile ? 'Mobile Device' : 'Desktop Device';
@@ -152,6 +152,7 @@ export function ParentAuth() {
                   await supabase.functions.invoke('send-push', {
                     body: {
                       family_id: familyData.id,
+                      target_role: 'main',
                       title: '⚠️ Security Alert',
                       body: `A login attempt from "${deviceName}" was blocked because this family account is active on "${mainDevice.name}".`,
                       tag: 'login-blocked',

@@ -54,8 +54,25 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   signOut: async () => {
-    await supabase.auth.signOut();
     const { DeviceService } = await import('../services/DeviceService');
+    const deviceId = await DeviceService.getDeviceId();
+
+    if (deviceId && navigator.onLine) {
+      try {
+        const { PushSubscriptionService } = await import('../services/PushSubscriptionService');
+        await PushSubscriptionService.unsubscribe();
+
+        await supabase
+          .from('devices')
+          .update({ role: 'secondary_parent', push_subscription: null })
+          .eq('id', deviceId)
+          .eq('role', 'main');
+      } catch (e) {
+        console.warn('Failed to release main role on sign out:', e);
+      }
+    }
+
+    await supabase.auth.signOut();
     await DeviceService.clearDeviceRole();
     const idb = await import('idb-keyval');
     await idb.del('linked-family-id');

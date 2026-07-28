@@ -349,9 +349,12 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                     const { DeviceService } = await import('../../../services/DeviceService');
                     const deviceId = await DeviceService.getDeviceId();
                     const { supabase } = await import('../../../lib/supabase');
+                    const { PushSubscriptionService } =
+                      await import('../../../services/PushSubscriptionService');
+                    await PushSubscriptionService.unsubscribe();
                     await supabase
                       .from('devices')
-                      .update({ role: 'secondary_parent' })
+                      .update({ role: 'secondary_parent', push_subscription: null })
                       .eq('id', deviceId);
                     await DeviceService.setDeviceRole('secondary_parent');
                     alert('Main App status released. Another device can now sign in as Main App.');

@@ -42,7 +42,7 @@ serve(async (req) => {
     // Configure VAPID details for RFC 8292 signing & payload encryption
     webPush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey);
 
-    const { family_id, title, body, url, tag, exclude_device_id } = await req.json();
+    const { family_id, title, body, url, tag, exclude_device_id, target_role } = await req.json();
 
     if (!family_id || !title) {
       return new Response(JSON.stringify({ error: 'family_id and title are required' }), {
@@ -59,6 +59,10 @@ serve(async (req) => {
       .select('id, push_subscription')
       .eq('family_id', family_id)
       .not('push_subscription', 'is', null);
+
+    if (target_role) {
+      query = query.eq('role', target_role);
+    }
 
     if (exclude_device_id) {
       query = query.neq('id', exclude_device_id);
