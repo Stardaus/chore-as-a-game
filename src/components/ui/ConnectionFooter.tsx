@@ -51,7 +51,7 @@ export function ConnectionFooter() {
               <span
                 className={cn(
                   'text-xs font-bold leading-tight',
-                  isLinked ? 'text-indigo-100' : 'text-slate-400'
+                  isLinked ? 'text-indigo-100' : 'text-slate-600 font-semibold'
                 )}
               >
                 {isLinked ? 'Cloud Sync Active' : 'Standalone Device'}

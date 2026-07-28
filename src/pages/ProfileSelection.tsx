@@ -74,8 +74,8 @@ export function ProfileSelection() {
             <Card className="border-2 border-indigo-100 shadow-xl rounded-[2.5rem] overflow-hidden">
               <CardContent className="p-8 space-y-6">
                 <div className="space-y-2 text-center">
-                  <h3 className="text-xl font-bold text-slate-900">Welcome to the Family!</h3>
-                  <p className="text-sm text-slate-500">
+                  <h2 className="text-xl font-bold text-slate-900">Welcome to the Family!</h2>
+                  <p className="text-sm text-slate-600 font-medium">
                     How would you like to start using ChoreQuest on this device?
                   </p>
                 </div>
@@ -83,13 +83,13 @@ export function ProfileSelection() {
                 <div className="grid gap-3">
                   <Button
                     onClick={handleParentSelect}
-                    className="h-16 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold flex items-center justify-between px-6"
+                    className="h-16 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold flex items-center justify-between px-6 shadow-lg shadow-indigo-100"
                   >
                     <div className="flex items-center gap-3 text-left">
                       <ShieldCheck className="h-6 w-6" />
                       <div>
                         <div className="text-sm">Create New Family</div>
-                        <div className="text-[10px] opacity-70 font-normal">
+                        <div className="text-[10px] text-indigo-100 font-medium">
                           Setup this device as the Hub
                         </div>
                       </div>
@@ -99,13 +99,13 @@ export function ProfileSelection() {
                   <Button
                     variant="outline"
                     onClick={() => setView('join')}
-                    className="h-16 rounded-2xl border-2 border-amber-100 bg-amber-50/30 hover:bg-amber-50 text-amber-900 font-bold flex items-center justify-between px-6 transition-all"
+                    className="h-16 rounded-2xl border-2 border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-950 font-bold flex items-center justify-between px-6 transition-all"
                   >
                     <div className="flex items-center gap-3 text-left">
-                      <Users className="h-6 w-6" />
+                      <Users className="h-6 w-6 text-amber-800" />
                       <div>
-                        <div className="text-sm">Join Existing Family</div>
-                        <div className="text-[10px] text-amber-700/70 font-normal">
+                        <div className="text-sm text-amber-950">Join Existing Family</div>
+                        <div className="text-[10px] text-amber-900 font-medium">
                           Link to a parent's account
                         </div>
                       </div>
