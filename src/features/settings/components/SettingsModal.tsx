@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Modal } from '../../../components/ui/Modal';
 import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
@@ -46,12 +46,24 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     updateReminderSettings,
   } = useStore();
 
+  const session = useAuthStore((s) => s.session);
   const { updateServiceWorker } = useRegisterSW();
 
   const [newPin, setNewPin] = useState(parentPin);
   const [question, setQuestion] = useState(recoveryQuestion);
   const [answer, setAnswer] = useState(recoveryAnswer);
   const [isWiping, setIsWiping] = useState(false);
+  const [isMainDevice, setIsMainDevice] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      import('../../../services/DeviceService').then(({ DeviceService }) => {
+        DeviceService.getDeviceRole().then((role) => {
+          setIsMainDevice(role === 'main' || !!session);
+        });
+      });
+    }
+  }, [isOpen, session]);
 
   const handleUpgrade = () => {
     if (confirm('Confirm upgrade to Premium? (Simulated Payment)')) {
@@ -335,7 +347,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           <DeviceManager />
 
           {/* Transfer Main App Action */}
-          {useAuthStore.getState().session && (
+          {(session || isMainDevice) && (
             <div className="pt-2">
               <Button
                 variant="outline"
