@@ -3,14 +3,41 @@ import { DeviceService } from './DeviceService';
 import { useStore } from '../store';
 import { get, set } from 'idb-keyval';
 
-function urlBase64ToUint8Array(base64String: string): Uint8Array {
-  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-  const rawData = window.atob(base64);
+export function urlBase64ToUint8Array(base64String: string): Uint8Array {
+  if (!base64String || typeof base64String !== 'string') {
+    throw new Error('VAPID public key is empty or missing.');
+  }
+
+  // Sanitize key: strip whitespace, surrounding quotes, and line breaks
+  const cleanKey = base64String
+    .trim()
+    .replace(/^["']|["']$/g, '')
+    .replace(/[\r\n]/g, '');
+  if (!cleanKey) {
+    throw new Error('VAPID public key string is empty after sanitization.');
+  }
+
+  const padding = '='.repeat((4 - (cleanKey.length % 4)) % 4);
+  const base64 = (cleanKey + padding).replace(/-/g, '+').replace(/_/g, '/');
+
+  let rawData: string;
+  try {
+    rawData = window.atob(base64);
+  } catch (_e) {
+    throw new Error('VAPID public key contains invalid base64 encoding.');
+  }
+
   const outputArray = new Uint8Array(rawData.length);
   for (let i = 0; i < rawData.length; ++i) {
     outputArray[i] = rawData.charCodeAt(i);
   }
+
+  if (outputArray.length !== 65 || outputArray[0] !== 4) {
+    throw new Error(
+      `Invalid VAPID P-256 public key (decoded ${outputArray.length} bytes, expected 65 bytes starting with 0x04 header). Please check VITE_VAPID_PUBLIC_KEY in environment variables.`
+    );
+  }
+
   return outputArray;
 }
 
@@ -83,6 +110,15 @@ export const PushSubscriptionService = {
       return { success: false, message: msg };
     }
 
+    let convertedKey: Uint8Array;
+    try {
+      convertedKey = urlBase64ToUint8Array(vapidPublicKey);
+    } catch (keyErr: any) {
+      const msg = keyErr?.message || 'Invalid VAPID public key.';
+      console.error('❌ VAPID Key Error:', msg);
+      return { success: false, message: msg };
+    }
+
     try {
       // Ensure Service Worker registration exists on iOS PWA
       let reg: ServiceWorkerRegistration | undefined;
@@ -123,12 +159,47 @@ export const PushSubscriptionService = {
 
       let sub = await reg.pushManager.getSubscription();
 
+      if (sub) {
+        // Verify if existing subscription key matches current VAPID key
+        try {
+          const keyBuffer = sub.options?.applicationServerKey;
+          if (keyBuffer) {
+            const keyArray = new Uint8Array(keyBuffer);
+            const isMatch =
+              keyArray.length === convertedKey.length &&
+              keyArray.every((val, index) => val === convertedKey[index]);
+            if (!isMatch) {
+              console.warn('⚠️ Existing push subscription VAPID key mismatch. Re-subscribing...');
+              await sub.unsubscribe();
+              sub = null;
+            }
+          }
+        } catch (_e) {
+          await sub?.unsubscribe().catch(() => {});
+          sub = null;
+        }
+      }
+
       if (!sub) {
-        const convertedKey = urlBase64ToUint8Array(vapidPublicKey);
-        sub = await reg.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: convertedKey as unknown as BufferSource,
-        });
+        try {
+          sub = await reg.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: convertedKey as unknown as BufferSource,
+          });
+        } catch (subErr: any) {
+          console.warn(
+            '⚠️ Push subscription failed on first attempt. Unsubscribing and retrying...',
+            subErr
+          );
+          const existing = await reg.pushManager.getSubscription().catch(() => null);
+          if (existing) {
+            await existing.unsubscribe().catch(() => {});
+          }
+          sub = await reg.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: convertedKey as unknown as BufferSource,
+          });
+        }
       }
 
       const familyId = await getActiveFamilyId();
