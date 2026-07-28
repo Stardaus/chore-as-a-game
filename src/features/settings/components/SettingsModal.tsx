@@ -343,7 +343,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                 onClick={async () => {
                   if (
                     confirm(
-                      'Transfer Main App status? This device will become a Secondary Parent device, allowing another device to sign in as the Main App.'
+                      'Transfer Main App status? This device will release Main App access, sign out, and restart as a fresh app so another device can sign in.'
                     )
                   ) {
                     const { DeviceService } = await import('../../../services/DeviceService');
@@ -351,14 +351,21 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                     const { supabase } = await import('../../../lib/supabase');
                     const { PushSubscriptionService } =
                       await import('../../../services/PushSubscriptionService');
-                    await PushSubscriptionService.unsubscribe();
-                    await supabase
-                      .from('devices')
-                      .update({ role: 'secondary_parent', push_subscription: null })
-                      .eq('id', deviceId);
-                    await DeviceService.setDeviceRole('secondary_parent');
-                    alert('Main App status released. Another device can now sign in as Main App.');
-                    onClose();
+                    const { useAuthStore } = await import('../../../store/useAuthStore');
+
+                    try {
+                      await PushSubscriptionService.unsubscribe();
+                      await supabase
+                        .from('devices')
+                        .update({ role: 'secondary_parent', push_subscription: null })
+                        .eq('id', deviceId);
+                    } catch (e) {
+                      console.warn('Error during main app transfer cleanup:', e);
+                    }
+
+                    await useAuthStore.getState().signOut();
+                    alert('Main App status released. Device signed out.');
+                    window.location.href = '/';
                   }
                 }}
               >
