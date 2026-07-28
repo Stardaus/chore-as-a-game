@@ -20,6 +20,7 @@ export function EditChoreModal({ chore, isOpen, onClose }: EditChoreModalProps) 
 
   useEffect(() => {
     if (chore) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setTitle(chore.title);
       setPoints(chore.points.toString());
       setFrequency(chore.frequency);
