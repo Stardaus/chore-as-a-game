@@ -21,7 +21,14 @@ export function ReloadPrompt() {
       r?.update();
     },
     onRegisterError(error) {
-      console.log('SW registration error', error);
+      const msg = error?.message || String(error);
+      if (msg.includes('SSL certificate error') || msg.includes('SecurityError')) {
+        console.warn(
+          '⚠️ SW registration bypassed in dev mode due to self-signed SSL certificate (Safari).'
+        );
+      } else {
+        console.warn('SW registration notice:', error);
+      }
     },
   });
 
