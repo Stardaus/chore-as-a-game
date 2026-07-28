@@ -4,6 +4,7 @@ import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
 import { useStore } from '../../../store';
 import { useAuthStore } from '../../../store/useAuthStore';
+import { useFamilyStore } from '../../../store/useFamilyStore';
 import {
   Check,
   Star,
@@ -308,7 +309,60 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
             <Smartphone className="h-4 w-4 text-indigo-500" />
             Family Devices
           </h4>
+
+          {/* Stale Threshold Setting */}
+          <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-slate-700">
+                Auto-Cleanup Inactive Devices
+              </span>
+              <select
+                value={useFamilyStore.getState().family?.device_stale_days || 14}
+                onChange={(e) => useFamilyStore.getState().updateStaleDays(Number(e.target.value))}
+                className="bg-white border border-slate-200 rounded px-2 py-1 text-xs font-bold text-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+              >
+                <option value={7}>7 Days</option>
+                <option value={14}>14 Days (Default)</option>
+                <option value={21}>21 Days</option>
+                <option value={28}>28 Days</option>
+              </select>
+            </div>
+            <p className="text-[10px] text-slate-500 leading-tight">
+              Devices inactive longer than this threshold will be automatically unlinked.
+            </p>
+          </div>
+
           <DeviceManager />
+
+          {/* Transfer Main App Action */}
+          {useAuthStore.getState().session && (
+            <div className="pt-2">
+              <Button
+                variant="outline"
+                className="w-full text-indigo-600 border-indigo-200 hover:bg-indigo-50 text-xs font-bold"
+                onClick={async () => {
+                  if (
+                    confirm(
+                      'Transfer Main App status? This device will become a Secondary Parent device, allowing another device to sign in as the Main App.'
+                    )
+                  ) {
+                    const { DeviceService } = await import('../../../services/DeviceService');
+                    const deviceId = await DeviceService.getDeviceId();
+                    const { supabase } = await import('../../../lib/supabase');
+                    await supabase
+                      .from('devices')
+                      .update({ role: 'secondary_parent' })
+                      .eq('id', deviceId);
+                    await DeviceService.setDeviceRole('secondary_parent');
+                    alert('Main App status released. Another device can now sign in as Main App.');
+                    onClose();
+                  }
+                }}
+              >
+                Transfer Main App to Another Device
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* PIN & Recovery Management */}

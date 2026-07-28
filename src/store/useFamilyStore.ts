@@ -1,16 +1,19 @@
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
 
-interface Family {
+export interface Family {
   id: string;
   parent_id: string;
   subscription_tier: 'free' | 'premium';
   join_code: string | null;
+  device_stale_days?: number;
 }
 
-interface Device {
+export interface Device {
   id: string;
   name: string;
+  role?: 'main' | 'secondary_parent' | 'secondary_child';
+  is_stale?: boolean;
   last_seen_at: string;
 }
 
@@ -24,12 +27,14 @@ interface FamilyState {
   generateJoinCode: () => Promise<string | null>;
   fetchDevices: (familyId: string) => Promise<void>;
   removeDevice: (deviceId: string) => Promise<void>;
+  renameDevice: (deviceId: string, newName: string) => Promise<void>;
+  updateStaleDays: (days: number) => Promise<void>;
 }
 
 /**
  * Store for managing Family-level settings and connected devices.
  */
-export const useFamilyStore = create<FamilyState>((set) => ({
+export const useFamilyStore = create<FamilyState>((set, get) => ({
   family: null,
   devices: [],
   loading: false,
@@ -99,7 +104,7 @@ export const useFamilyStore = create<FamilyState>((set) => ({
     try {
       const { data, error } = await supabase
         .from('devices')
-        .select('id, name, last_seen_at')
+        .select('id, name, role, is_stale, last_seen_at')
         .eq('family_id', familyId)
         .order('last_seen_at', { ascending: false });
 
@@ -120,6 +125,37 @@ export const useFamilyStore = create<FamilyState>((set) => ({
       }));
     } catch (error) {
       console.error('Error removing device:', error);
+    }
+  },
+
+  renameDevice: async (deviceId: string, newName: string) => {
+    try {
+      const { error } = await supabase.from('devices').update({ name: newName }).eq('id', deviceId);
+      if (error) throw error;
+      set((state) => ({
+        devices: state.devices.map((d) => (d.id === deviceId ? { ...d, name: newName } : d)),
+      }));
+    } catch (error) {
+      console.error('Error renaming device:', error);
+    }
+  },
+
+  updateStaleDays: async (days: number) => {
+    const family = get().family;
+    if (!family) return;
+
+    try {
+      const { error } = await supabase
+        .from('families')
+        .update({ device_stale_days: days })
+        .eq('id', family.id);
+
+      if (error) throw error;
+      set((state) => ({
+        family: state.family ? { ...state.family, device_stale_days: days } : null,
+      }));
+    } catch (error) {
+      console.error('Error updating stale threshold:', error);
     }
   },
 }));

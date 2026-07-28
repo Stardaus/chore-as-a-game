@@ -15,15 +15,20 @@ CREATE TABLE IF NOT EXISTS public.families (
 ALTER TABLE public.families ADD COLUMN IF NOT EXISTS join_code TEXT UNIQUE;
 ALTER TABLE public.families ADD COLUMN IF NOT EXISTS join_code_expires_at TIMESTAMPTZ;
 ALTER TABLE public.families ADD COLUMN IF NOT EXISTS last_join_attempt TIMESTAMPTZ;
+ALTER TABLE public.families ADD COLUMN IF NOT EXISTS device_stale_days INTEGER NOT NULL DEFAULT 14 CHECK (device_stale_days IN (7, 14, 21, 28));
 
 CREATE TABLE IF NOT EXISTS public.devices (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     family_id UUID REFERENCES public.families(id) ON DELETE CASCADE NOT NULL,
     name TEXT NOT NULL,
+    role TEXT NOT NULL DEFAULT 'secondary_child' CHECK (role IN ('main', 'secondary_parent', 'secondary_child')),
+    is_stale BOOLEAN NOT NULL DEFAULT false,
     push_subscription JSONB,
     last_seen_at TIMESTAMPTZ DEFAULT now() NOT NULL,
     created_at TIMESTAMPTZ DEFAULT now() NOT NULL
 );
+ALTER TABLE public.devices ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'secondary_child' CHECK (role IN ('main', 'secondary_parent', 'secondary_child'));
+ALTER TABLE public.devices ADD COLUMN IF NOT EXISTS is_stale BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE public.devices ADD COLUMN IF NOT EXISTS push_subscription JSONB;
 
 CREATE TABLE IF NOT EXISTS public.profiles (
@@ -139,7 +144,8 @@ CREATE POLICY "Anyone can register a device" ON public.devices FOR INSERT WITH C
 CREATE OR REPLACE FUNCTION public.register_device_by_code(
   input_code TEXT,
   input_device_id UUID,
-  input_device_name TEXT
+  input_device_name TEXT,
+  input_role TEXT DEFAULT 'secondary_child'
 )
 RETURNS UUID AS $$
 DECLARE
@@ -147,31 +153,57 @@ DECLARE
   current_tier TEXT;
   device_count INTEGER;
   max_limit INTEGER;
+  stale_days INTEGER;
   last_attempt TIMESTAMPTZ;
 BEGIN
-  SELECT id, subscription_tier, last_join_attempt INTO target_family_id, current_tier, last_attempt
-  FROM public.families WHERE join_code = input_code;
+  SELECT id, subscription_tier, device_stale_days, last_join_attempt
+  INTO target_family_id, current_tier, stale_days, last_attempt
+  FROM public.families WHERE join_code = input_code AND join_code_expires_at > now();
 
   IF last_attempt IS NOT NULL AND last_attempt > (now() - interval '5 seconds') THEN
     RAISE EXCEPTION 'Too many attempts. Please wait.';
   END IF;
 
   IF target_family_id IS NULL THEN
-    RAISE EXCEPTION 'Invalid join code.';
+    RAISE EXCEPTION 'Invalid or expired join code.';
   END IF;
 
-  SELECT count(*) INTO device_count FROM public.devices WHERE family_id = target_family_id;
+  IF input_role NOT IN ('secondary_parent', 'secondary_child') THEN
+    RAISE EXCEPTION 'Invalid device role.';
+  END IF;
+
+  -- 1. Auto-cleanup stale devices prior to checking limit
+  DELETE FROM public.devices
+  WHERE family_id = target_family_id
+    AND role != 'main'
+    AND (
+      is_stale = true
+      OR (
+        push_subscription IS NULL
+        AND last_seen_at < now() - (stale_days || ' days')::interval
+      )
+    );
+
+  -- 2. Count secondary devices
+  SELECT count(*) INTO device_count
+  FROM public.devices
+  WHERE family_id = target_family_id AND role != 'main';
+
   max_limit := CASE WHEN current_tier = 'premium' THEN 5 ELSE 2 END;
 
   IF device_count >= max_limit AND NOT EXISTS (SELECT 1 FROM public.devices WHERE id = input_device_id) THEN
-    RAISE EXCEPTION 'Device limit reached.';
+    RAISE EXCEPTION 'Device limit reached. The main app has been notified.';
   END IF;
 
   UPDATE public.families SET last_join_attempt = now() WHERE id = target_family_id;
 
-  INSERT INTO public.devices (id, family_id, name)
-  VALUES (input_device_id, target_family_id, input_device_name)
-  ON CONFLICT (id) DO UPDATE SET last_seen_at = now(), name = input_device_name;
+  INSERT INTO public.devices (id, family_id, name, role, is_stale, last_seen_at)
+  VALUES (input_device_id, target_family_id, input_device_name, input_role, false, now())
+  ON CONFLICT (id) DO UPDATE
+    SET name = input_device_name,
+        role = input_role,
+        is_stale = false,
+        last_seen_at = now();
 
   RETURN target_family_id;
 END;
@@ -218,8 +250,8 @@ GRANT EXECUTE ON FUNCTION public.wipe_family_data(UUID) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.reset_family_points(UUID) TO anon, authenticated;
 
 -- Grant execution to everyone (logic is inside function)
-GRANT EXECUTE ON FUNCTION public.register_device_by_code(TEXT, UUID, TEXT) TO anon;
-GRANT EXECUTE ON FUNCTION public.register_device_by_code(TEXT, UUID, TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.register_device_by_code(TEXT, UUID, TEXT, TEXT) TO anon;
+GRANT EXECUTE ON FUNCTION public.register_device_by_code(TEXT, UUID, TEXT, TEXT) TO authenticated;
 
 -- 5. REAL-TIME CONFIG
 DO $$ 

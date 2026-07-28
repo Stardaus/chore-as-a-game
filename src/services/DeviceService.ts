@@ -3,6 +3,10 @@ import { get, set } from 'idb-keyval';
 import { supabase, ensureDeviceIdHeader } from '../lib/supabase';
 
 const DEVICE_ID_KEY = 'chore-quest-device-id';
+const DEVICE_ROLE_KEY = 'chore-quest-device-role';
+const DEVICE_NAME_KEY = 'chore-quest-device-name';
+
+export type DeviceRole = 'main' | 'secondary_parent' | 'secondary_child';
 
 /**
  * Service for identifying and linking the current physical device/browser.
@@ -22,14 +26,53 @@ export const DeviceService = {
   },
 
   /**
-   * Ensures this physical device is registered in the public.devices database table.
-   * Works for primary parent devices as well as secondary child devices.
+   * Retrieves the locally stored device role.
    */
-  ensureDeviceRegistered: async (familyId: string, customName?: string): Promise<string> => {
+  getDeviceRole: async (): Promise<DeviceRole | null> => {
+    return (await get<DeviceRole>(DEVICE_ROLE_KEY)) || null;
+  },
+
+  /**
+   * Persists the device role locally.
+   */
+  setDeviceRole: async (role: DeviceRole): Promise<void> => {
+    await set(DEVICE_ROLE_KEY, role);
+  },
+
+  /**
+   * Retrieves the locally stored device name.
+   */
+  getStoredDeviceName: async (): Promise<string | null> => {
+    return (await get<string>(DEVICE_NAME_KEY)) || null;
+  },
+
+  /**
+   * Persists the device name locally.
+   */
+  setStoredDeviceName: async (name: string): Promise<void> => {
+    await set(DEVICE_NAME_KEY, name);
+  },
+
+  /**
+   * Ensures this physical device is registered in the public.devices database table.
+   * Works for primary parent devices as well as secondary devices.
+   */
+  ensureDeviceRegistered: async (
+    familyId: string,
+    customName?: string,
+    role?: DeviceRole
+  ): Promise<string> => {
     const deviceId = await DeviceService.getDeviceId();
+    const storedName = await DeviceService.getStoredDeviceName();
+    const storedRole = await DeviceService.getDeviceRole();
+
     const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
     const defaultName = isMobile ? 'Mobile Device' : 'Primary Device';
-    const name = customName || defaultName;
+    const name = customName || storedName || defaultName;
+    const finalRole = role || storedRole || 'main';
+
+    await DeviceService.setStoredDeviceName(name);
+    await DeviceService.setDeviceRole(finalRole);
 
     try {
       const { error } = await supabase.from('devices').upsert(
@@ -37,6 +80,8 @@ export const DeviceService = {
           id: deviceId,
           family_id: familyId,
           name,
+          role: finalRole,
+          is_stale: false,
           last_seen_at: new Date().toISOString(),
         },
         { onConflict: 'id' }
@@ -45,7 +90,7 @@ export const DeviceService = {
       if (error) {
         console.warn('Failed to register device in database:', error);
       } else {
-        console.log(`✅ Registered device (${name}) in family:`, familyId);
+        console.log(`✅ Registered device (${name}, role: ${finalRole}) in family:`, familyId);
       }
     } catch (err) {
       console.warn('Device registration error:', err);
@@ -60,8 +105,13 @@ export const DeviceService = {
    *
    * @param joinCode - The 6-digit code provided by the parent.
    * @param deviceName - A friendly name for this device (e.g. "Adam's Tablet").
+   * @param role - The selected device role ('secondary_parent' or 'secondary_child').
    */
-  linkDevice: async (joinCode: string, deviceName: string) => {
+  linkDevice: async (
+    joinCode: string,
+    deviceName: string,
+    role: 'secondary_parent' | 'secondary_child' = 'secondary_child'
+  ) => {
     const deviceId = await DeviceService.getDeviceId();
 
     // Perform the registration via a secure Database Function (RPC)
@@ -69,6 +119,7 @@ export const DeviceService = {
       input_code: joinCode,
       input_device_id: deviceId,
       input_device_name: deviceName,
+      input_role: role,
     });
 
     if (error) {
@@ -77,13 +128,15 @@ export const DeviceService = {
         throw new Error('Invalid or expired join code.');
       }
       if (error.message.includes('limit reached')) {
-        throw new Error('Device limit reached. Upgrade to Premium for more slots!');
+        throw new Error('Device limit reached. The main app has been notified to free up slots!');
       }
       throw new Error('Failed to link device. Please try again.');
     }
 
-    // Store the linked family ID locally for real-time synchronization
+    // Store the linked family ID and role locally for real-time synchronization
     await set('linked-family-id', familyId);
+    await DeviceService.setDeviceRole(role);
+    await DeviceService.setStoredDeviceName(deviceName);
     await ensureDeviceIdHeader();
 
     return familyId;

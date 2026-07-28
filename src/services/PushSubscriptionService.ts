@@ -139,21 +139,16 @@ export const PushSubscriptionService = {
       }
 
       const deviceId = await DeviceService.getDeviceId();
-      const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-      const deviceName = isMobile ? 'iPhone App' : 'Primary Device';
       const subJson = sub.toJSON();
 
-      // Upsert device row with push_subscription in public.devices
-      const { error } = await supabase.from('devices').upsert(
-        {
-          id: deviceId,
-          family_id: familyId,
-          name: deviceName,
+      // Update push_subscription on existing device row without overwriting device name
+      const { error } = await supabase
+        .from('devices')
+        .update({
           push_subscription: subJson,
           last_seen_at: new Date().toISOString(),
-        },
-        { onConflict: 'id' }
-      );
+        })
+        .eq('id', deviceId);
 
       if (error) {
         console.error('❌ Failed to upsert push_subscription in devices table:', error);

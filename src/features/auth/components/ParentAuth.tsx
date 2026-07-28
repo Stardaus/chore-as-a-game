@@ -123,6 +123,39 @@ export function ParentAuth() {
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
         if (data.session) {
+          const { DeviceService } = await import('../../../services/DeviceService');
+          const deviceId = await DeviceService.getDeviceId();
+
+          // Check if another device is already registered as the Main App
+          const { data: familyData } = await supabase
+            .from('families')
+            .select('id')
+            .eq('parent_id', data.session.user.id)
+            .maybeSingle();
+
+          if (familyData?.id) {
+            const { data: mainDevices } = await supabase
+              .from('devices')
+              .select('id, name')
+              .eq('family_id', familyData.id)
+              .eq('role', 'main');
+
+            const existingMain = mainDevices?.find((d) => d.id !== deviceId);
+
+            if (existingMain) {
+              // Block login: another device is already the Main App
+              await supabase.auth.signOut();
+              setError(
+                `Another device ("${existingMain.name}") is currently logged in as the Main App. Only one device can hold Main App status at a time. To transfer access, open Settings → Transfer Main App on that device.`
+              );
+              setLoading(false);
+              return;
+            }
+
+            // Register this device as the main device
+            await DeviceService.ensureDeviceRegistered(familyData.id, undefined, 'main');
+          }
+
           useAuthStore.getState().setSession(data.session);
           const { useFamilyStore } = await import('../../../store/useFamilyStore');
           await useFamilyStore.getState().fetchFamily();

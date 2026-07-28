@@ -148,6 +148,12 @@ self.addEventListener('push', (event) => {
     }
   }
 
+  // Handle silent liveness ping without displaying an OS notification
+  if (payload.tag === 'liveness-ping' || payload.silent) {
+    console.log('[SW] Liveness ping received');
+    return;
+  }
+
   const title = payload.title || 'ChoreQuest';
   const options: NotificationOptions = {
     body: payload.body || 'New notification',

@@ -1,10 +1,11 @@
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store';
 import { useAuthStore } from '../store/useAuthStore';
+import { DeviceService, type DeviceRole } from '../services/DeviceService';
 import { Button } from '../components/ui/Button';
 import { Card, CardContent } from '../components/ui/Card';
 import { ShieldCheck, UserCircle, Users, Smartphone, Sparkles, RefreshCw } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { JoinFamily } from '../features/auth/components/JoinFamily';
 import { ConnectionFooter } from '../components/ui/ConnectionFooter';
 
@@ -22,6 +23,13 @@ export function ProfileSelection() {
   const { profiles, isSyncing } = useStore();
   const { isDeviceLinked: isLinked, session } = useAuthStore();
   const [view, setView] = useState<'select' | 'join'>('select');
+  const [role, setRole] = useState<DeviceRole | null>(null);
+
+  useEffect(() => {
+    DeviceService.getDeviceRole().then(setRole);
+  }, []);
+
+  const isChildDevice = role === 'secondary_child';
 
   const handleChildSelect = (childId: string) => {
     navigate(`/child/${childId}`);
@@ -113,23 +121,25 @@ export function ProfileSelection() {
               </div>
             )}
 
-            {/* Parent Profile */}
-            <button
-              onClick={handleParentSelect}
-              className="group flex flex-col items-center space-y-3 transition-all"
-            >
-              <div className="relative">
-                <div className="h-28 w-28 rounded-[2.5rem] bg-indigo-600 flex items-center justify-center text-white shadow-lg group-hover:shadow-indigo-200 group-hover:scale-105 transition-all outline outline-0 outline-indigo-200 group-hover:outline-8">
-                  <ShieldCheck className="h-12 w-12" />
+            {/* Parent Profile (Hidden for Child Devices) */}
+            {!isChildDevice && (
+              <button
+                onClick={handleParentSelect}
+                className="group flex flex-col items-center space-y-3 transition-all"
+              >
+                <div className="relative">
+                  <div className="h-28 w-28 rounded-[2.5rem] bg-indigo-600 flex items-center justify-center text-white shadow-lg group-hover:shadow-indigo-200 group-hover:scale-105 transition-all outline outline-0 outline-indigo-200 group-hover:outline-8">
+                    <ShieldCheck className="h-12 w-12" />
+                  </div>
+                  <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-1.5 shadow-md">
+                    <UserCircle className="h-5 w-5 text-indigo-600" />
+                  </div>
                 </div>
-                <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-1.5 shadow-md">
-                  <UserCircle className="h-5 w-5 text-indigo-600" />
-                </div>
-              </div>
-              <span className="font-bold text-slate-700 group-hover:text-indigo-600 transition-colors">
-                Parent Hub
-              </span>
-            </button>
+                <span className="font-bold text-slate-700 group-hover:text-indigo-600 transition-colors">
+                  Parent Hub
+                </span>
+              </button>
+            )}
 
             {/* Child Profiles */}
             {profiles.map((profile) => (

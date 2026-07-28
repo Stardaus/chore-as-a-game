@@ -2,7 +2,17 @@ import { useEffect, useState, useCallback } from 'react';
 import { useFamilyStore } from '../../../store/useFamilyStore';
 import { Button } from '../../../components/ui/Button';
 import { Card } from '../../../components/ui/Card';
-import { Smartphone, Trash2, RefreshCw, Plus, ShieldCheck } from 'lucide-react';
+import {
+  Smartphone,
+  Trash2,
+  RefreshCw,
+  Plus,
+  ShieldCheck,
+  Edit2,
+  Check,
+  X,
+  AlertTriangle,
+} from 'lucide-react';
 import { cn } from '../../../lib/utils';
 
 /**
@@ -11,9 +21,19 @@ import { cn } from '../../../lib/utils';
  * @usedBy SettingsModal
  */
 export function DeviceManager() {
-  const { family, devices, fetchFamily, fetchDevices, generateJoinCode, removeDevice, loading } =
-    useFamilyStore();
+  const {
+    family,
+    devices,
+    fetchFamily,
+    fetchDevices,
+    generateJoinCode,
+    removeDevice,
+    renameDevice,
+    loading,
+  } = useFamilyStore();
   const [isGenerating, setIsGenerating] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState('');
 
   const loadData = useCallback(async () => {
     const familyId = await fetchFamily();
@@ -30,6 +50,42 @@ export function DeviceManager() {
     setIsGenerating(true);
     await generateJoinCode();
     setIsGenerating(false);
+  };
+
+  const handleStartRename = (id: string, currentName: string) => {
+    setEditingId(id);
+    setEditingName(currentName);
+  };
+
+  const handleSaveRename = async (id: string) => {
+    if (editingName.trim()) {
+      await renameDevice(id, editingName.trim());
+    }
+    setEditingId(null);
+  };
+
+  const getRoleBadge = (role?: string) => {
+    switch (role) {
+      case 'main':
+        return (
+          <span className="text-[9px] font-bold text-indigo-700 bg-indigo-100 px-1.5 py-0.5 rounded">
+            Main App
+          </span>
+        );
+      case 'secondary_parent':
+        return (
+          <span className="text-[9px] font-bold text-purple-700 bg-purple-100 px-1.5 py-0.5 rounded">
+            Parent
+          </span>
+        );
+      case 'secondary_child':
+      default:
+        return (
+          <span className="text-[9px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">
+            Child
+          </span>
+        );
+    }
   };
 
   return (
@@ -76,7 +132,8 @@ export function DeviceManager() {
             Linked Devices
           </h4>
           <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">
-            {devices.length} / {family?.subscription_tier === 'premium' ? 5 : 2}
+            {devices.filter((d) => d.role !== 'main').length} /{' '}
+            {family?.subscription_tier === 'premium' ? 5 : 2}
           </span>
         </div>
 
@@ -89,20 +146,68 @@ export function DeviceManager() {
                 </div>
 
                 <div className="flex-1 min-w-0">
-                  <h5 className="text-sm font-bold text-slate-800 truncate">{device.name}</h5>
-                  <p className="text-[10px] text-slate-400 italic">
-                    Active Sync ID: {device.id.slice(0, 8)}...
-                  </p>
+                  {editingId === device.id ? (
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="text"
+                        value={editingName}
+                        onChange={(e) => setEditingName(e.target.value)}
+                        className="text-xs font-bold bg-white border border-indigo-200 rounded px-2 py-0.5 w-full focus:outline-none"
+                        autoFocus
+                        maxLength={20}
+                      />
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-6 w-6 text-green-600"
+                        onClick={() => handleSaveRename(device.id)}
+                      >
+                        <Check className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-6 w-6 text-slate-400"
+                        onClick={() => setEditingId(null)}
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <h5 className="text-sm font-bold text-slate-800 truncate">{device.name}</h5>
+                      {getRoleBadge(device.role)}
+                      <button
+                        onClick={() => handleStartRename(device.id, device.name)}
+                        className="text-slate-400 hover:text-indigo-600 transition-colors p-0.5"
+                      >
+                        <Edit2 className="h-3 w-3" />
+                      </button>
+                    </div>
+                  )}
+
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <p className="text-[10px] text-slate-400 italic">
+                      Sync ID: {device.id.slice(0, 8)}...
+                    </p>
+                    {device.is_stale && (
+                      <span className="text-[9px] font-bold text-amber-700 bg-amber-100 px-1 rounded inline-flex items-center gap-0.5">
+                        <AlertTriangle className="h-2.5 w-2.5" /> Inactive
+                      </span>
+                    )}
+                  </div>
                 </div>
 
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 text-red-400 hover:text-red-600 hover:bg-red-50"
-                  onClick={() => removeDevice(device.id)}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                {device.role !== 'main' && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-red-400 hover:text-red-600 hover:bg-red-50"
+                    onClick={() => removeDevice(device.id)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
               </div>
             </Card>
           ))}

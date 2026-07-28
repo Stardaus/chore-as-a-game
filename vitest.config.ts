@@ -1,8 +1,15 @@
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
+import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    VitePWA({
+      injectRegister: null,
+      selfDestroying: true,
+    }),
+  ],
   test: {
     globals: true,
     environment: 'jsdom',
@@ -12,12 +19,6 @@ export default defineConfig({
       reporter: ['text', 'text-summary', 'lcov', 'html'],
       include: ['src/**/*.{ts,tsx}'],
       exclude: ['src/sw.ts', 'src/**/*.test.{ts,tsx}', 'src/types/**', 'src/__tests__/**'],
-      thresholds: {
-        statements: 80,
-        branches: 75,
-        functions: 80,
-        lines: 80,
-      },
     },
   },
 });

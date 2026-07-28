@@ -25,6 +25,7 @@ interface JoinFamilyProps {
 export function JoinFamily({ onJoined, onBack }: JoinFamilyProps) {
   const [code, setCode] = useState('');
   const [name, setName] = useState('');
+  const [role, setRole] = useState<'secondary_child' | 'secondary_parent'>('secondary_child');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -62,9 +63,9 @@ export function JoinFamily({ onJoined, onBack }: JoinFamilyProps) {
     setError(null);
 
     try {
-      const familyId = await DeviceService.linkDevice(code, result.data!.name);
+      const familyId = await DeviceService.linkDevice(code, result.data!.name, role);
 
-      // CRITICAL FIX: Trigger global state refresh immediately after linking
+      // Trigger global state refresh immediately after linking
       await refreshLinkStatus();
 
       setSuccess(true);
@@ -218,6 +219,42 @@ export function JoinFamily({ onJoined, onBack }: JoinFamilyProps) {
                       maxLength={20}
                       required
                     />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">
+                    Device Mode
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setRole('secondary_child')}
+                      className={`p-3 rounded-xl border-2 text-left transition-all ${
+                        role === 'secondary_child'
+                          ? 'border-amber-500 bg-amber-50 text-amber-900 font-bold'
+                          : 'border-slate-200 hover:border-slate-300 text-slate-600'
+                      }`}
+                    >
+                      <div className="text-xs font-bold">👦 Child Device</div>
+                      <div className="text-[10px] text-slate-500 font-normal">
+                        Quests & shop only
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setRole('secondary_parent')}
+                      className={`p-3 rounded-xl border-2 text-left transition-all ${
+                        role === 'secondary_parent'
+                          ? 'border-indigo-500 bg-indigo-50 text-indigo-900 font-bold'
+                          : 'border-slate-200 hover:border-slate-300 text-slate-600'
+                      }`}
+                    >
+                      <div className="text-xs font-bold">🛡️ Parent Device</div>
+                      <div className="text-[10px] text-slate-500 font-normal">
+                        Full parent hub access
+                      </div>
+                    </button>
                   </div>
                 </div>
               </div>

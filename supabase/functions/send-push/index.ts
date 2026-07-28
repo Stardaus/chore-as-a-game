@@ -98,8 +98,11 @@ serve(async (req) => {
       } catch (err: any) {
         console.error(`Failed to deliver push to device ${dev.id}:`, err);
         if (err.statusCode === 410 || err.statusCode === 404) {
-          // Subscription expired/invalidated by FCM/Apple, clean up database row
-          await supabase.from('devices').update({ push_subscription: null }).eq('id', dev.id);
+          // Subscription expired/invalidated by FCM/Apple, mark device as stale and clear push_subscription
+          await supabase
+            .from('devices')
+            .update({ push_subscription: null, is_stale: true })
+            .eq('id', dev.id);
         }
       }
     }
