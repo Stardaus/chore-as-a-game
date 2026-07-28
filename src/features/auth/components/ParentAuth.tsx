@@ -10,7 +10,7 @@ import {
   CardTitle,
   CardDescription,
 } from '../../../components/ui/Card';
-import { Mail, Lock, ShieldCheck, Sparkles, AlertCircle, Clock } from 'lucide-react';
+import { Mail, Lock, ShieldCheck, Sparkles, AlertCircle, Clock, Smartphone } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 
 function formatCooldownTime(totalSeconds: number): string {
@@ -40,6 +40,9 @@ export function ParentAuth() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [blockedMainDevice, setBlockedMainDevice] = useState<{ id: string; name: string } | null>(
+    null
+  );
   const [resetSent, setResetSent] = useState(false);
   const [cooldown, setCooldown] = useState<number | null>(null);
 
@@ -102,6 +105,7 @@ export function ParentAuth() {
 
     setLoading(true);
     setError(null);
+    setBlockedMainDevice(null);
     useAuthStore.getState().setValidatingAuth(true);
 
     try {
@@ -168,10 +172,8 @@ export function ParentAuth() {
                 await DeviceService.clearDeviceRole();
                 await supabase.auth.signOut();
 
-                // 3. Fail connection and display error to connecting app
-                setError(
-                  `Access Blocked: Another device ("${mainDevice.name}") is currently active as the Main App. Only one device can hold Main App status at a time. The Main App has been notified of this attempt.`
-                );
+                // 3. Set blocked state for rich instruction card
+                setBlockedMainDevice({ id: mainDevice.id, name: mainDevice.name });
                 return;
               }
             }
@@ -241,7 +243,46 @@ export function ParentAuth() {
 
           <CardContent className="p-8">
             <form onSubmit={handleSubmit} className="space-y-5">
-              {error && (
+              {blockedMainDevice ? (
+                <div className="p-4 bg-red-50 border-2 border-red-200 rounded-2xl text-left space-y-3 animate-in fade-in slide-in-from-top-2">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
+                    <div>
+                      <h4 className="font-bold text-red-900 text-sm">Main App Access Blocked</h4>
+                      <p className="text-xs text-red-700 mt-0.5">
+                        This family account is currently active on{' '}
+                        <strong className="underline font-black text-red-950">
+                          {blockedMainDevice.name}
+                        </strong>
+                        . Only 1 device can hold Main App status at a time.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="bg-white/90 p-3.5 rounded-xl border border-red-100 space-y-2 text-xs text-slate-700 shadow-sm">
+                    <p className="font-bold text-slate-900 flex items-center gap-1.5">
+                      <Smartphone className="h-4 w-4 text-indigo-600" /> Options to connect:
+                    </p>
+                    <ul className="list-disc list-inside space-y-1.5 text-[11px] text-slate-600 leading-relaxed pl-1">
+                      <li>
+                        <strong>To make THIS device the Main App:</strong> On{' '}
+                        <em>"{blockedMainDevice.name}"</em>, open{' '}
+                        <strong>Settings ⚙️ → Family Devices</strong>, and click{' '}
+                        <strong>"Transfer Main App to Another Device"</strong>.
+                      </li>
+                      <li>
+                        <strong>To connect as Child or Secondary Parent:</strong> Ask{' '}
+                        <em>"{blockedMainDevice.name}"</em> for a <strong>6-digit Join Code</strong>
+                        , then click "Join Existing Family" on this device.
+                      </li>
+                    </ul>
+                  </div>
+
+                  <p className="text-[10px] text-red-500 font-semibold italic text-center">
+                    🔒 A security alert has been sent to "{blockedMainDevice.name}".
+                  </p>
+                </div>
+              ) : error ? (
                 <div
                   className={cn(
                     'p-4 rounded-2xl border flex items-start gap-3 animate-in fade-in slide-in-from-top-2',
@@ -257,7 +298,7 @@ export function ParentAuth() {
                   )}
                   <p className="text-sm font-medium leading-tight">{error}</p>
                 </div>
-              )}
+              ) : null}
 
               <div className="space-y-4">
                 <div className="relative">
