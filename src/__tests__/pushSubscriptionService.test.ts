@@ -24,6 +24,18 @@ describe('PushSubscriptionService - VAPID Key Validation', () => {
     );
   });
 
+  it('detects when user accidentally copies 32-byte VAPID_PRIVATE_KEY instead of PUBLIC_KEY', () => {
+    // 32-byte private key base64 (43 chars)
+    const privateKey = 'MHcCAQEEIIG344hfNtbT16MPF2-a7pdzvy3saBcjn54';
+    expect(() => urlBase64ToUint8Array(privateKey)).toThrowError(/You copied VAPID_PRIVATE_KEY/);
+  });
+
+  it('strips terminal table pipe characters', () => {
+    const tableOutputKey = `│ ${validVapidKey} │`;
+    const bytes = urlBase64ToUint8Array(tableOutputKey);
+    expect(bytes.length).toBe(65);
+  });
+
   it('throws descriptive error for empty VAPID key string', () => {
     expect(() => urlBase64ToUint8Array('')).toThrowError(/empty/);
   });

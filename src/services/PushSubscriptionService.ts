@@ -8,11 +8,14 @@ export function urlBase64ToUint8Array(base64String: string): Uint8Array {
     throw new Error('VAPID public key is empty or missing.');
   }
 
-  // Sanitize key: strip whitespace, surrounding quotes, and line breaks
+  // Sanitize key: strip whitespace, surrounding quotes, terminal table pipes, and line breaks
   const cleanKey = base64String
     .trim()
     .replace(/^["']|["']$/g, '')
-    .replace(/[\r\n]/g, '');
+    .replace(/^[│|]|[│|]$/g, '')
+    .replace(/[\r\n\t]/g, '')
+    .trim();
+
   if (!cleanKey) {
     throw new Error('VAPID public key string is empty after sanitization.');
   }
@@ -30,6 +33,12 @@ export function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const outputArray = new Uint8Array(rawData.length);
   for (let i = 0; i < rawData.length; ++i) {
     outputArray[i] = rawData.charCodeAt(i);
+  }
+
+  if (outputArray.length === 32) {
+    throw new Error(
+      'VAPID key error: You copied VAPID_PRIVATE_KEY (32 bytes) instead of VAPID_PUBLIC_KEY! Please copy the 65-byte VAPID_PUBLIC_KEY.'
+    );
   }
 
   if (outputArray.length !== 65 || outputArray[0] !== 4) {
@@ -102,7 +111,8 @@ export const PushSubscriptionService = {
       return { success: false, message: msg };
     }
 
-    const vapidPublicKey = import.meta.env.VITE_VAPID_PUBLIC_KEY;
+    const vapidPublicKey =
+      import.meta.env.VITE_VAPID_PUBLIC_KEY || (import.meta.env as any).VAPID_PUBLIC_KEY;
     if (!vapidPublicKey) {
       const msg =
         'VITE_VAPID_PUBLIC_KEY is missing in app build. Please set VITE_VAPID_PUBLIC_KEY in environment variables and rebuild.';
