@@ -4,7 +4,7 @@ import { useAuthStore } from '../store/useAuthStore';
 import { DeviceService, type DeviceRole } from '../services/DeviceService';
 import { Button } from '../components/ui/Button';
 import { Card, CardContent } from '../components/ui/Card';
-import { ShieldCheck, UserCircle, Users, Smartphone, Sparkles, RefreshCw } from 'lucide-react';
+import { ShieldCheck, UserCircle, Users, Smartphone, RefreshCw } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { JoinFamily } from '../features/auth/components/JoinFamily';
 import { ConnectionFooter } from '../components/ui/ConnectionFooter';
@@ -57,9 +57,11 @@ export function ProfileSelection() {
       <div className="w-full max-w-md space-y-10 relative z-10">
         {/* App Branding */}
         <div className="text-center space-y-2">
-          <div className="inline-flex h-20 w-20 items-center justify-center rounded-[2rem] bg-indigo-600 text-white shadow-2xl shadow-indigo-200 mb-2 rotate-3 transform hover:rotate-0 transition-transform cursor-default">
-            <Sparkles className="h-10 w-10 fill-current" />
-          </div>
+          <img
+            src="/pwa-192x192.png"
+            alt="ChoreQuest Logo"
+            className="h-20 w-20 rounded-[2rem] shadow-2xl shadow-indigo-200 mb-2 rotate-3 transform hover:rotate-0 transition-transform cursor-default object-cover inline-block"
+          />
           <h1 className="text-4xl font-black text-slate-900 tracking-tighter">ChoreQuest</h1>
           <p className="text-slate-500 font-medium italic">
             {showWelcomeView ? 'Start your adventure!' : 'Who is playing today?'}
