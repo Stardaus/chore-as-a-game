@@ -89,7 +89,7 @@ export function ConnectionFooter() {
       <div className="flex flex-col items-center gap-1">
         <div className="h-px w-8 bg-slate-200" />
         <p className="text-center text-[10px] font-black text-slate-300 uppercase tracking-[0.2em]">
-          CQ-OS {APP_VERSION}
+          CQ-OS {APP_VERSION} {typeof __COMMIT_HASH__ !== 'undefined' && `#${__COMMIT_HASH__}`}
         </p>
       </div>
     </div>

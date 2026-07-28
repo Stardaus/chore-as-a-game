@@ -5,6 +5,7 @@ import { Layout } from './layouts/Layout';
 import { ReloadPrompt } from './components/ui/ReloadPrompt';
 import { ToastContainer } from './components/ui/ToastContainer';
 import { useAppLifecycle } from './hooks/useAppLifecycle';
+import { DevVersionBadge } from './components/ui/DevVersionBadge';
 import { DeviceService, type DeviceRole } from './services/DeviceService';
 
 // Lazy load heavy dashboard pages
@@ -73,6 +74,7 @@ function App() {
       </Suspense>
       <ToastContainer />
       <ReloadPrompt />
+      <DevVersionBadge />
     </BrowserRouter>
   );
 }

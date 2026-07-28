@@ -473,7 +473,10 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           </Button>
         </div>
 
-        <div className="text-center text-xs text-slate-400">ChoreQuest {APP_VERSION}</div>
+        <div className="text-center text-[10px] font-mono text-slate-400">
+          ChoreQuest {APP_VERSION} {typeof __COMMIT_HASH__ !== 'undefined' && `#${__COMMIT_HASH__}`}{' '}
+          {typeof __BUILD_TIME__ !== 'undefined' && `• Built @ ${__BUILD_TIME__}`}
+        </div>
       </div>
     </Modal>
   );
