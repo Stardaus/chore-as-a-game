@@ -134,43 +134,45 @@ export function ParentAuth() {
             .maybeSingle();
 
           if (familyData?.id) {
-            const { data: mainDevices } = await supabase
+            const { data: allDevices } = await supabase
               .from('devices')
-              .select('id, name')
+              .select('id, name, role, created_at')
               .eq('family_id', familyData.id)
-              .eq('role', 'main');
+              .order('created_at', { ascending: true });
 
-            const existingMain = mainDevices?.find((d) => d.id !== deviceId);
+            if (allDevices && allDevices.length > 0) {
+              const mainDevice = allDevices.find((d) => d.role === 'main') || allDevices[0];
 
-            if (existingMain) {
-              // 1. Notify current Main App via Edge Function
-              const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-              const deviceName = isMobile ? 'Mobile Device' : 'Desktop Device';
-              try {
-                await supabase.functions.invoke('send-push', {
-                  body: {
-                    family_id: familyData.id,
-                    title: '⚠️ Security Alert',
-                    body: `A login attempt from "${deviceName}" was blocked because this device is the Main App.`,
-                    tag: 'login-blocked',
-                    exclude_device_id: deviceId,
-                  },
-                });
-              } catch (_e) {
-                // Ignore push error if edge function is unreachable
+              if (mainDevice.id !== deviceId) {
+                // 1. Notify current Main App via Edge Function
+                const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+                const deviceName = isMobile ? 'Mobile Device' : 'Desktop Device';
+                try {
+                  await supabase.functions.invoke('send-push', {
+                    body: {
+                      family_id: familyData.id,
+                      title: '⚠️ Security Alert',
+                      body: `A login attempt from "${deviceName}" was blocked because this family account is active on "${mainDevice.name}".`,
+                      tag: 'login-blocked',
+                      exclude_device_id: deviceId,
+                    },
+                  });
+                } catch (_e) {
+                  // Ignore push error if edge function is unreachable
+                }
+
+                // 2. Clean up temporary row, clear local role, and sign out
+                await supabase.from('devices').delete().eq('id', deviceId);
+                await DeviceService.clearDeviceRole();
+                await supabase.auth.signOut();
+
+                // 3. Fail connection and display error to connecting app
+                setError(
+                  `Access Blocked: Another device ("${mainDevice.name}") is currently active as the Main App. Only one device can hold Main App status at a time. The Main App has been notified of this attempt.`
+                );
+                setLoading(false);
+                return;
               }
-
-              // 2. Clean up temporary row, clear local role, and sign out
-              await supabase.from('devices').delete().eq('id', deviceId);
-              await DeviceService.clearDeviceRole();
-              await supabase.auth.signOut();
-
-              // 3. Fail connection and display error to connecting app
-              setError(
-                `Access Blocked: Another device ("${existingMain.name}") is currently active as the Main App. Only one device can hold Main App status at a time. The Main App has been notified of this attempt.`
-              );
-              setLoading(false);
-              return;
             }
 
             // Register this device as the main device
