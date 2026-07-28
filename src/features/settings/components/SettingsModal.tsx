@@ -477,9 +477,17 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           </Button>
         </div>
 
-        <div className="text-center text-[10px] font-mono text-slate-400">
-          ChoreQuest {APP_VERSION} {typeof __COMMIT_HASH__ !== 'undefined' && `#${__COMMIT_HASH__}`}{' '}
-          {typeof __BUILD_TIME__ !== 'undefined' && `• Built @ ${__BUILD_TIME__}`}
+        <div className="pt-4 border-t border-slate-100 flex flex-col items-center gap-1">
+          <div className="text-center text-[10px] font-mono text-slate-400 flex items-center justify-center gap-1.5 flex-wrap">
+            <span className="font-bold text-slate-600">ChoreQuest {APP_VERSION}</span>
+            {typeof __COMMIT_HASH__ !== 'undefined' && (
+              <span className="text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded font-bold">
+                #{__COMMIT_HASH__}
+              </span>
+            )}
+            {typeof __BUILD_TIME__ !== 'undefined' && <span>• Built @ {__BUILD_TIME__}</span>}
+          </div>
+          <p className="text-[9px] text-slate-400 italic">Progressive Web App (PWA) Ready</p>
         </div>
       </div>
     </Modal>

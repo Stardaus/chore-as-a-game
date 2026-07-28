@@ -7,7 +7,8 @@ export const createProfileSlice = (set: StoreSet, get: StoreGet): ProfileSlice =
   profiles: [],
 
   addProfile: async (name, avatar) => {
-    let { familyId, profiles, safeSync } = get();
+    let familyId = get().familyId;
+    const { profiles, safeSync } = get();
     if (!familyId) {
       const idb = await import('idb-keyval');
       familyId = (await idb.get<string>('linked-family-id')) || null;

@@ -7,7 +7,8 @@ export const createRewardSlice = (set: StoreSet, get: StoreGet): RewardSlice => 
   redemptions: [],
 
   addReward: async (reward) => {
-    let { familyId, rewards, safeSync } = get();
+    let familyId = get().familyId;
+    const { rewards, safeSync } = get();
     if (!familyId) {
       const idb = await import('idb-keyval');
       familyId = (await idb.get<string>('linked-family-id')) || null;

@@ -9,7 +9,8 @@ export const createChoreSlice = (set: StoreSet, get: StoreGet): ChoreSlice => ({
   assignments: [],
 
   addChore: async (chore) => {
-    let { familyId, chores, safeSync } = get();
+    let familyId = get().familyId;
+    const { chores, safeSync } = get();
     if (!familyId) {
       const idb = await import('idb-keyval');
       familyId = (await idb.get<string>('linked-family-id')) || null;
