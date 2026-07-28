@@ -12,6 +12,7 @@ import {
   Check,
   X,
   AlertTriangle,
+  Crown,
 } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 
@@ -88,6 +89,9 @@ export function DeviceManager() {
     }
   };
 
+  const mainDevice = devices.find((d) => d.role === 'main');
+  const secondaryDevices = devices.filter((d) => d.role !== 'main');
+
   return (
     <div className="space-y-6">
       {/* Join Code Section */}
@@ -125,20 +129,90 @@ export function DeviceManager() {
         <Plus className="absolute -bottom-4 -right-4 h-24 w-24 opacity-10 rotate-12" />
       </div>
 
-      {/* Devices List */}
+      {/* Main App Controller Section */}
+      {mainDevice && (
+        <div className="space-y-2">
+          <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider px-1 flex items-center gap-1.5">
+            <Crown className="h-3.5 w-3.5 text-amber-500" /> Main App Controller
+          </h4>
+          <Card className="p-3.5 border-2 border-indigo-100/80 bg-gradient-to-r from-indigo-50/60 to-white shadow-none rounded-2xl">
+            <div className="flex items-center justify-between gap-3">
+              <div className="h-10 w-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-indigo-100">
+                <Crown className="h-5 w-5 text-amber-300" />
+              </div>
+
+              <div className="flex-1 min-w-0">
+                {editingId === mainDevice.id ? (
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="text"
+                      value={editingName}
+                      onChange={(e) => setEditingName(e.target.value)}
+                      className="text-xs font-bold bg-white border border-indigo-200 rounded px-2 py-0.5 w-full focus:outline-none"
+                      autoFocus
+                      maxLength={20}
+                    />
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-6 w-6 text-green-600"
+                      onClick={() => handleSaveRename(mainDevice.id)}
+                    >
+                      <Check className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-6 w-6 text-slate-400"
+                      onClick={() => setEditingId(null)}
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <h5 className="text-sm font-black text-slate-900 truncate">
+                      {mainDevice.name}
+                    </h5>
+                    <span className="text-[9px] font-extrabold text-indigo-700 bg-indigo-100/80 px-2 py-0.5 rounded-full border border-indigo-200">
+                      👑 Main App
+                    </span>
+                    <button
+                      onClick={() => handleStartRename(mainDevice.id, mainDevice.name)}
+                      className="text-slate-400 hover:text-indigo-600 transition-colors p-0.5"
+                    >
+                      <Edit2 className="h-3 w-3" />
+                    </button>
+                  </div>
+                )}
+
+                <div className="flex items-center gap-2 mt-0.5">
+                  <p className="text-[10px] text-slate-400 font-mono">
+                    Sync ID: {mainDevice.id.slice(0, 8)}...
+                  </p>
+                  <span className="text-[9px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.2 rounded inline-flex items-center gap-0.5">
+                    Online
+                  </span>
+                </div>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* Secondary Linked Devices Section */}
       <div className="space-y-3">
         <div className="flex items-center justify-between px-1">
-          <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-            Linked Devices
+          <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+            <Smartphone className="h-3.5 w-3.5 text-slate-400" /> Secondary Linked Devices
           </h4>
-          <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">
-            {devices.filter((d) => d.role !== 'main').length} /{' '}
-            {family?.subscription_tier === 'premium' ? 5 : 2}
+          <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-100">
+            {secondaryDevices.length} / {family?.subscription_tier === 'premium' ? 5 : 2}
           </span>
         </div>
 
         <div className="grid gap-2">
-          {devices.map((device) => (
+          {secondaryDevices.map((device) => (
             <Card key={device.id} className="p-3 border-slate-100 shadow-none bg-slate-50/50">
               <div className="flex items-center justify-between gap-3">
                 <div className="h-10 w-10 rounded-xl bg-white border border-slate-100 flex items-center justify-center shrink-0">
@@ -187,7 +261,7 @@ export function DeviceManager() {
                   )}
 
                   <div className="flex items-center gap-2 mt-0.5">
-                    <p className="text-[10px] text-slate-400 italic">
+                    <p className="text-[10px] text-slate-400 italic font-mono">
                       Sync ID: {device.id.slice(0, 8)}...
                     </p>
                     {device.is_stale && (
@@ -198,24 +272,26 @@ export function DeviceManager() {
                   </div>
                 </div>
 
-                {device.role !== 'main' && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-red-400 hover:text-red-600 hover:bg-red-50"
-                    onClick={() => removeDevice(device.id)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                )}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-red-400 hover:text-red-600 hover:bg-red-50"
+                  onClick={() => removeDevice(device.id)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
               </div>
             </Card>
           ))}
 
-          {devices.length === 0 && !loading && (
-            <div className="text-center py-6 border-2 border-dashed border-slate-200 rounded-2xl">
-              <p className="text-[11px] text-slate-400 font-medium italic">
-                No other devices linked yet.
+          {secondaryDevices.length === 0 && !loading && (
+            <div className="text-center py-6 border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50/40">
+              <p className="text-xs font-semibold text-slate-600">
+                No secondary devices linked yet.
+              </p>
+              <p className="text-[10px] text-slate-400 mt-1 max-w-xs mx-auto">
+                Generate a 6-digit Join Code above to link child tablets or secondary parent phones
+                to your account.
               </p>
             </div>
           )}
